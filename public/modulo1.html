@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Módulo</title>
+
+  <script>
+    if (!localStorage.getItem('access_token')) {
+      window.location.replace('index.html');
+    }
+  </script>
+
+  <link rel="stylesheet" href="main.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto:wght@400;500;700;900&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+  />
+
+  <style>
+    /* ---------- VARIABLES ---------- */
+    :root {
+      --primary: #e65050;
+      --primary-hover: #d84747;
+      --on-primary: #fff;
+      --text-dark: #122435;
+      --shadow-soft: rgba(0, 0, 0, 0.08);
+      --gutter: 2rem;
+    }
+
+    /* ---------- MODAL ---------- */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background-color: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      width: 90%;
+      max-width: 800px; 
+      animation: slide-down 0.3s ease-out;
+    }
+    @keyframes slide-down {
+      from {
+        transform: translateY(-30px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1.5rem;
+      color: #333;
+    }
+    .close-button {
+      background: none;
+      border: none;
+      font-size: 2rem;
+      cursor: pointer;
+      color: #888;
+    }
+    .form-actions {
+      text-align: right;
+      margin-top: 1.5rem;
+    }
+
+    /* ---------- Resource Grid (Nuevo) ---------- */
+    #resource-grid-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 1.5rem;
+    }
+    .resource-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        cursor: pointer;
+        padding: 1rem;
+        border-radius: 8px;
+        transition: background-color 0.2s ease;
+    }
+    .resource-item:hover {
+        background-color: #f5f5f5;
+    }
+    .resource-icon {
+        font-size: 2.5rem; 
+        margin-bottom: 0.75rem;
+        color: #333;
+    }
+    .resource-title {
+        font-weight: 500;
+        color: var(--text-dark);
+    }
+
+
+    /* ---------- HEADER DE UNIDAD ---------- */
+    .course-content-area {
+      padding: var(--gutter);
+    }
+
+    .unit-header {
+      text-align: center;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+    }
+
+    .unit-title {
+      margin: 0 0 0.5rem 0;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2rem);
+      color: var(--text-dark);
+    }
+
+    .unit-actions {
+      display: flex;
+      justify-content: flex-start;
+      gap: 0.6rem 0.8rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    /* ---------- BOTONES ---------- */
+    .unit-actions .btn {
+      background: var(--primary);
+      color: var(--on-primary);
+      border: none;
+      padding: 0.55rem 1rem;
+      border-radius: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.06s ease, box-shadow 0.2s ease,
+        background-color 0.2s;
+      box-shadow: 0 3px 8px var(--shadow-soft);
+    }
+
+    .unit-actions .btn:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px var(--shadow-soft);
+    }
+
+    .unit-actions .btn:active {
+      transform: translateY(0);
+      box-shadow: 0 3px 8px var(--shadow-soft);
+    }
+
+    .unit-actions .btn:focus-visible {
+      outline: 2px solid #2f6fed;
+      outline-offset: 2px;
+    }
+
+    /* ---------- RESPONSIVE ---------- */
+    @media (max-width: 860px) {
+      .unit-title {
+        text-align: center;
+      }
+      .unit-actions {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .unit-actions {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="site-wrapper">
+    <header class="main-header">
+      <a href="main.html" class="logo">Complab</a>
+      <div class="user-menu">
+        <span id="welcome-message" class="welcome-message"></span>
+        <div class="dropdown">
+          <button id="settings-btn" class="dropdown-btn">
+            <span>Configuración</span>
+            <i class="fas fa-chevron-down"></i>
+          </button>
+          <div id="dropdown-content" class="dropdown-content">
+            <a href="#" id="profile-link">Mi Perfil</a>
+            <a href="#" id="logout-button">Cerrar Sesión</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <section class="module-section">
+        <h1 id="module-title" class="boosters-title">Cargando...</h1>
+        <div class="title-underline"></div>
+
+        <div class="tabs-container">
+          <nav id="admin-tab-nav" class="tab-nav" style="display: none">
+            <button class="tab-link active" data-tab="content-view">
+              Contenido
+            </button>
+            <button class="tab-link" data-tab="participants-view">
+              Participantes
+            </button>
+          </nav>
+        </div>
+
+        <div id="tab-content-container">
+          <!-- Pestaña 1: Contenido del Curso -->
+          <div id="content-view" class="tab-pane active">
+            <div class="course-layout">
+              <nav id="course-index-sidebar" class="course-index-sidebar">
+                <h2 class="sidebar-title">Unidades del Curso</h2>
+                <div id="units-list-container"></div>
+                <button
+                  id="add-unit-btn"
+                  class="btn btn-secondary btn-full-width"
+                >
+                  Añadir sección
+                </button>
+              </nav>
+
+              <div id="course-content-area" class="course-content-area">
+                <div id="unit-content-placeholder">
+                  <p>
+                    Selecciona una unidad para ver su contenido o crea una nueva
+                    para empezar.
+                  </p>
+                </div>
+
+                <div id="unit-content-display" style="display: none">
+                  <div class="unit-header">
+                    <h2 id="unit-title-display" class="unit-title">
+                      Introducción a la fotografía
+                    </h2>
+                    <div class="unit-actions">
+                      <button id="add-resource-btn" class="btn btn-primary">
+                        Añadir Lección o Actividad
+                      </button>
+                    </div>
+                  </div>
+
+                  <div id="lessons-and-activities-container"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pestaña 2: Panel de Administración -->
+          <div id="participants-view" class="tab-pane">
+            <div class="admin-panel">
+              <div class="admin-column">
+                <h2 class="section-title">Estudiantes Inscritos</h2>
+                <div
+                  id="lista-estudiantes"
+                  class="student-list-container"
+                ></div>
+              </div>
+              <div class="admin-column">
+                <h2 class="section-title">Inscribir Estudiante</h2>
+                <form id="form-inscribir" class="enroll-form card-like">
+                  <div class="form-group">
+                    <label for="usuarioId">ID del Estudiante</label>
+                    <input
+                      type="text"
+                      id="usuarioId"
+                      name="usuarioId"
+                      placeholder="Pega el ID del usuario aquí"
+                      required
+                    />
+                  </div>
+                  <button type="submit" class="btn btn-primary">Inscribir</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <div id="message-container"></div>
+  </div>
+
+  <!-- Modal para Añadir Nueva Unidad -->
+  <div id="add-unit-modal" class="modal-overlay" style="display: none">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modal-title">Crear Nueva Sección</h2>
+        <button id="close-modal-btn" class="close-button">&times;</button>
+      </div>
+      <form id="add-unit-form">
+        <div class="form-group">
+          <label for="unit-name-input">Nombre de la Sección</label>
+          <input
+            type="text"
+            id="unit-name-input"
+            name="name"
+            placeholder="Ej: Introducción a la fotografía"
+            required
+          />
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Crear Sección</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal para Añadir Actividad o Recurso -->
+  <div id="add-resource-modal" class="modal-overlay" style="display: none">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Añadir una actividad o un recurso</h2>
+        <button id="close-resource-modal-btn" class="close-button">&times;</button>
+      </div>
+      <div id="resource-grid-container">
+        <!-- Las opciones se insertarán aquí con JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Genérico para Forms de Actividades (NUEVO) -->
+  <div id="activity-form-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 900px;">
+      <div class="modal-header">
+        <h2 id="activity-modal-title">Añadiendo una nueva actividad</h2>
+        <button id="close-activity-modal-btn" class="close-button">&times;</button
+        >
+      </div>
+      <div id="activity-form-container">
+        <!-- El contenido del formulario se cargará aquí -->
+      </div>
+    </div>
+  </div>
+
+  <script src="resource-handler.js"></script>
+  <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/langs/es.js"></script>
+  <script src="modulo.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+</body>
+</html>

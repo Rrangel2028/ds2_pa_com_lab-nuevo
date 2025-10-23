@@ -1,0 +1,291 @@
+:root{
+  --bg: #d8e3f8;             /* azul pastel suave */
+  --ink: #1f2937;            /* texto principal */
+  --ink-soft: #4b5563;
+  --muted: #6b7280;
+
+  --primary: #ff6b6b;        /* coral (botón/acentos) */
+  --primary-dark: #e85a5a;
+  --accent: #00b5ad;         /* turquesa (enlaces/detalles) */
+  --accent-2: #ffd166;       /* amarillo cálido (detalles) */
+
+  --card: #ffffff;           /* tarjeta clara */
+  --card-brd: #e5e7eb;
+  --shadow: 0 10px 30px rgba(17, 24, 39, .08);
+
+  --radius-lg: 18px;
+  --radius: 14px;
+  --radius-sm: 10px;
+}
+
+/* Reducir movimiento si el usuario lo pide */
+@media (prefers-reduced-motion: reduce){
+  *{ animation: none !important; transition: none !important; }
+}
+
+/* --------- Reset mínimo --------- */
+*{ box-sizing: border-box; margin: 0; padding: 0; }
+html, body{ height: 100%; }
+body{
+  font-family: Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  overflow-x: hidden;
+}
+
+/* Textura sutil tipo “paper grain” */
+body::before{
+  content:"";
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cdefs%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 0 .02 0'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3C/defs%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: .35; pointer-events: none;
+}
+
+/* --------- Layout --------- */
+.site-wrapper{
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 1rem;
+  padding: clamp(1rem, 1.2vw, 1.25rem);
+  width: 100%;
+}
+
+/* Header / Logo con “marca de agua” */
+header{
+  display: flex; justify-content: center; align-items: center;
+  padding: 1rem 0;
+}
+.logo{
+  font-family: Orbitron, Roboto, sans-serif;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  font-size: clamp(1.6rem, 2vw + 1rem, 2.4rem);
+  color: var(--ink);
+  position: relative;
+}
+.logo::after{
+  /* subrayado color foto */
+  content:"";
+  position: absolute; left: 0; right: 0; bottom: -8px;
+  height: 6px; border-radius: 6px;
+  background:
+    linear-gradient(90deg, var(--accent), var(--accent-2), var(--primary));
+  opacity: .85;
+}
+
+/* Main */
+main{
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
+/* --------- Contenedores --------- */
+#auth-container{
+  max-width: 460px;
+  width: 100%;
+  margin: 0 auto; /* Centrado en móviles */
+}
+
+#content-container{
+  display: none; /* Oculto en móviles */
+}
+
+#auth-container h2{
+  font-family: Orbitron, Roboto, sans-serif;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: .4px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+#auth-container p{
+  color: var(--ink-soft);
+  line-height: 1.6;
+  text-align: center;
+  margin-top: 1rem;
+}
+
+/* --------- Estilo “polaroid” para tarjetas de login/registro --------- */
+#login-view, #register-view{
+  background: #fff;
+  border: 1px solid var(--card-brd);
+  border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(0,0,0,.06);
+  padding: 2rem 1.5rem 1.5rem 1.5rem;
+  transform: rotate(-.3deg);
+  position: relative;
+  isolation: isolate;
+  animation: dropIn .45s ease both;
+}
+#register-view{ 
+  transform: rotate(.4deg); 
+}
+#register-view.show{
+  animation: dropIn_alt .45s ease both;
+}
+
+#login-view::before, #register-view::before{
+  content:"";
+  position: absolute; left: 0; right: 0; top: 0;
+  height: 12px; border-radius: 12px 12px 0 0;
+  background: linear-gradient(90deg, var(--primary) 0 40%, var(--accent) 60% 100%);
+  opacity: .9;
+  z-index: 1;
+}
+@keyframes dropIn{
+  from{ transform: translateY(8px) rotate(-1deg); opacity: 0; }
+  to{ transform: translateY(0) rotate(-.3deg); opacity: 1; }
+}
+@keyframes dropIn_alt{
+  from{ transform: translateY(8px) rotate(1deg); opacity: 0; }
+  to{ transform: translateY(0) rotate(.4deg); opacity: 1; }
+}
+
+/* Formularios */
+form{
+  display: grid;
+  gap: .85rem;
+  margin-top: .75rem;
+}
+
+input[type="email"], input[type="password"], input[type="text"], input[type="tel"]{
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid #e6e6e6;
+  background: #fdfdfd;
+  color: var(--ink);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s, transform .1s;
+  font-size: 1rem;
+}
+
+input::placeholder{ color: #9ca3af; }
+
+input:focus{
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0,181,173,.18);
+}
+
+/* Botones */
+button[type="submit"]{
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius);
+  padding: 1rem;
+  font-weight: 700;
+  letter-spacing: .2px;
+  color: #fff;
+  background: var(--primary);
+  box-shadow: 0 8px 20px rgba(255,107,107,.25);
+  position: relative;
+  overflow: hidden;
+  transition: transform .08s ease, filter .2s ease, box-shadow .2s ease;
+  margin-top: .5rem;
+}
+button::after{
+  content:"";
+  position: absolute; left: -40%; top: -50%;
+  width: 40%; height: 200%;
+  transform: rotate(25deg);
+  background: linear-gradient(90deg, rgba(255,255,255,.0), rgba(255,255,255,.45), rgba(255,255,255,.0));
+  transition: left .35s ease;
+}
+button:hover::after{ left: 120%; }
+button:hover{ filter: brightness(1.03); }
+button:active{ transform: translateY(1px); }
+button:disabled{ opacity: .6; cursor: not-allowed; }
+
+/* Enlaces */
+a{ color: var(--accent); text-decoration: none; font-weight: 600; }
+a:hover{ text-decoration: underline; }
+
+/* --------- Mensajería (toasts) --------- */
+#message-container{
+  position: fixed; right: 1rem; bottom: 1rem;
+  display: grid; gap: .6rem; z-index: 50;
+  pointer-events: none;
+}
+.toast{
+  pointer-events: auto;
+  min-width: 260px; max-width: 90vw;
+  background: #111827; color: #fff;
+  border: 1px solid #111827;
+  border-left: 6px solid var(--accent);
+  padding: .85rem 1rem; border-radius: 12px;
+  box-shadow: var(--shadow);
+  animation: rise .3s ease both;
+}
+.toast--error{ border-left-color: var(--primary); }
+@keyframes rise{
+  from{ transform: translateY(8px); opacity: 0; }
+  to{ transform: translateY(0); opacity: 1; }
+}
+
+/* --------- Accesibilidad (teclado) --------- */
+a:focus, button:focus, input:focus{
+  outline: 3px solid rgba(255,209,102,.65);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* --------- Responsivo --------- */
+@media (min-width: 900px){
+  main{
+    grid-template-columns: 1fr 1.1fr;
+    align-items: center;
+    gap: 1.25rem;
+  }
+  #auth-container{ margin: 0; }
+  
+  #content-container{
+    display: block;
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    height: 100%;
+    max-height: 600px;
+  }
+  
+  .slide {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 1.2s ease-in-out;
+    z-index: 1;
+  }
+
+  .slide.active {
+    opacity: 1;
+  }
+  
+  /* Filtro de color Duotono */
+  #content-container::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+    mix-blend-mode: multiply;
+    opacity: 0.85;
+    z-index: 2; /* Por encima de los slides */
+  }
+
+  #content-container::after{
+    content:"";
+    position: absolute; 
+    inset: 16px;
+    border: 8px solid #fff; 
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.08) inset;
+    pointer-events: none;
+    z-index: 3; /* Por encima de todo */
+  }
+}
