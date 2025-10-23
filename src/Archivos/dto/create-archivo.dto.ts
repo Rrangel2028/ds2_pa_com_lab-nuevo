@@ -1,4 +1,4 @@
 export class CreateArchivoDto {
-    name: string;
-    description: string;
+  name: string;
+  description: string;
 }

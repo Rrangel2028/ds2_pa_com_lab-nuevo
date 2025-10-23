@@ -1,5 +1,6 @@
 :root{
   --bg: #d8e3f8;
+    --lesson-blue: #cfe8ff; /* azul suave para cajas de lección (ajustable) */
   --ink: #1f2937;
   --ink-soft: #4b5563;
   --muted: #6b7280;
@@ -798,6 +799,34 @@ body{
     border-color: #dee2e6;     /* El borde se hace un poco más visible */
 }
 
+/* Hacer que las lecciones en la vista estudiante luzcan como en admin: tarjeta blanca,
+   borde sutil azul y sombra ligera. Aplica sólo cuando el item contiene .leccion-preview. */
+.role-student .resource-item-list:has(.leccion-preview),
+.role-student .resource-item-list.contains-leccion {
+    background: #ffffff; /* tarjeta blanca */
+    border: 1px solid rgba(13,110,253,0.06); /* borde sutil azulado */
+    box-shadow: 0 6px 18px rgba(13,110,253,0.04); /* sombra muy ligera */
+    border-radius: 12px;
+    padding: 12px 15px; /* mantener espaciado coherente */
+    transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
+}
+
+.role-student .resource-item-list:has(.leccion-preview) .leccion-preview,
+.role-student .resource-item-list.contains-leccion .leccion-preview {
+    background: #ffffff; /* asegurar fondo blanco dentro de la tarjeta */
+    border: 1px solid rgba(30,136,229,0.22); /* borde interno similar a admin */
+    box-shadow: none;
+    margin: 0; /* quitar margen adicional para que encaje dentro de la tarjeta */
+    padding: 18px 20px; /* ligero ajuste interior para mantener proporciones */
+}
+
+.role-student .resource-item-list:has(.leccion-preview):hover,
+.role-student .resource-item-list.contains-leccion:hover {
+    box-shadow: 0 8px 22px rgba(13,110,253,0.06);
+    border-color: rgba(13,110,253,0.12);
+    transform: translateY(-2px);
+}
+
 .role-student .resource-item-main a {
     display: flex;
     align-items: center;
@@ -905,15 +934,15 @@ body{
 }
 
 .leccion-preview {
-  display: block;
-  width: 100%;
-  padding: 20px 22px;
-  border-radius: 12px;
-  background: #ffffff;
-  margin: 8px 0 18px 0;
-  border: 2px solid #1e88e5;
-  box-shadow: none;
-  box-sizing: border-box;
+    display: block;
+    width: 100%;
+    padding: 20px 22px;
+    border-radius: 12px;
+    background: #fbfdff; /* ligero tinte azul para destacar sin ser agresivo */
+    margin: 8px 0 18px 0;
+    border: 2px solid var(--lesson-blue); /* usar variable para ajuste rápido */
+    box-shadow: none;
+    box-sizing: border-box;
 }
 
 /* Si quieres mostrar un título separado cuando el contenido no trae <h..> */

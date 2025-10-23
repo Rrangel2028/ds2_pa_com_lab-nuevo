@@ -58,6 +58,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.activityFormModal = window.activityFormModal || activityFormModal;
     window.activityModalTitle = window.activityModalTitle || activityModalTitle;
     window.activityFormContainer = window.activityFormContainer || activityFormContainer;
+    // Asegurar que el botón de cerrar del modal y el clic en backdrop funcionen para todos los roles
+    try {
+        const closeActivityModalBtn = document.getElementById('close-activity-modal-btn');
+        if (closeActivityModalBtn) closeActivityModalBtn.addEventListener('click', () => { if (activityFormModal) activityFormModal.style.display = 'none'; });
+        if (activityFormModal) activityFormModal.addEventListener('click', e => { if (e.target === activityFormModal) activityFormModal.style.display = 'none'; });
+    } catch (e) { /* ignore */ }
 // ...existing code...
 
     // --- 3. INICIALIZACIÓN PRINCIPAL ---
@@ -1078,23 +1084,44 @@ async function openSubmissionModal(activity, existingSubmission = null) {
                             }
                         }
 
-                        const fd = new FormData();
-                        fd.append('comment', commentEl.value || '');
-                        fd.append('submitAt', new Date().toISOString());
-                        // anexar nuevos archivos si el usuario indicó
-                        selectedFilesInline.forEach(f => fd.append('files', f, f.name));
-                        // si el backend acepta lista de archivos a eliminar como removeFiles, la incluimos
-                        if (filesToRemove.length) fd.append('removeFiles', JSON.stringify(filesToRemove));
-
                         const tokenLocal = localStorage.getItem('access_token') || '';
-                        const headersPatch = tokenLocal ? { 'Authorization': 'Bearer ' + tokenLocal } : {};
-                        const res = await fetch(`/entregas/${existingSubmission._id}`, {
-                            method: 'PATCH',
-                            headers: headersPatch,
-                            body: fd
-                        });
-                        const body = await res.json().catch(()=>null);
-                        if (!res.ok) throw new Error(body?.message || `Error ${res.status}`);
+
+                        // Si hay archivos nuevos, usamos FormData (multipart). Si NO hay archivos nuevos, enviamos JSON para
+                        // que el backend PATCH (que no tiene un interceptor multer) reciba correctamente el body.
+                        if (selectedFilesInline && selectedFilesInline.length > 0) {
+                            const fd = new FormData();
+                            fd.append('comment', commentEl.value || '');
+                            fd.append('submitAt', new Date().toISOString());
+                            // anexar nuevos archivos si el usuario indicó
+                            selectedFilesInline.forEach(f => fd.append('files', f, f.name));
+                            // si el backend acepta lista de archivos a eliminar como removeFiles, la incluimos
+                            if (filesToRemove.length) fd.append('removeFiles', JSON.stringify(filesToRemove));
+
+                            const headersPatch = tokenLocal ? { 'Authorization': 'Bearer ' + tokenLocal } : {};
+                            const res = await fetch(`/entregas/${existingSubmission._id}`, {
+                                method: 'PATCH',
+                                headers: headersPatch,
+                                body: fd
+                            });
+                            const body = await res.json().catch(()=>null);
+                            if (!res.ok) throw new Error(body?.message || `Error ${res.status}`);
+                        } else {
+                            // Enviar JSON cuando no hay archivos nuevos (esto evita el problema de enviar FormData a PATCH sin Multer)
+                            const payload = {
+                                comment: commentEl.value || '',
+                                submitAt: new Date().toISOString(),
+                            };
+                            if (filesToRemove.length) payload.removeFiles = filesToRemove;
+
+                            const headersJson = Object.assign({}, tokenLocal ? { 'Authorization': 'Bearer ' + tokenLocal } : {}, { 'Content-Type': 'application/json' });
+                            const res = await fetch(`/entregas/${existingSubmission._id}`, {
+                                method: 'PATCH',
+                                headers: headersJson,
+                                body: JSON.stringify(payload)
+                            });
+                            const body = await res.json().catch(()=>null);
+                            if (!res.ok) throw new Error(body?.message || `Error ${res.status}`);
+                        }
                     } else {
                         const fd = new FormData();
                         fd.append('actividadId', activity._id);
@@ -2352,51 +2379,136 @@ async function openSubmissionModal(activity, existingSubmission = null) {
                 }
             } catch (err) { /* ignore */ }
 
-            // Construir innerHTML base
-            resourceElement.innerHTML = `
-                <div class="resource-item-main" style="display:flex; gap:12px; align-items:flex-start;">
-                    <div class="resource-left" style="flex:0 0 44px; display:flex; align-items:center; justify-content:center;">
-                        ${iconHTML}
-                    </div>
-                    <div class="resource-body" style="flex:1;">
-                        ${resource.type === 'leccion' ? `
-                            <div class="leccion-preview" data-resource-id="${resource._id || ''}">
-                                <h3 class="leccion-preview-title" style="margin:0 0 6px 0;">${escapeHtml(resource.name || 'Lección')}</h3>
-                                <div class="leccion-preview-body">${previewHtml}</div>
-                            </div>
-                        ` : resource.type === 'archivo' ? `
-                            <a href="${resourceLink}" target="_blank" rel="noopener noreferrer" class="resource-link" style="text-decoration:none; color:inherit;">
-                                <div class="resource-item-content"><span>${escapeHtml(resourceName)}</span></div>
-                            </a>
-                        ` : `
-                            <div class="actividad-preview">
-                                <div class="actividad-title" style="margin-bottom:6px;"><strong>${escapeHtml(resourceName)}</strong></div>
-                                <div class="actividad-body">${previewHtml}</div>
-                            </div>
-                        `}
-                    </div>
-                    <div class="resource-item-actions" style="margin-left:12px; display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
-                        ${isAdmin ? `
-                        <div style="display:flex; gap:8px; align-items:center;">
-                            <button class="btn btn-icon btn-view-resource" title="${resource.type === 'actividad' ? 'Ver entregas' : resource.type === 'leccion' ? 'Ver lección' : 'Abrir archivo'}" style="display:inline-flex"
-                                    data-resource-id="${resource._id || ''}">
-                            <i class="fas ${resource.type === 'actividad' ? 'fa-list' : resource.type === 'leccion' ? 'fa-eye' : 'fa-file'}" aria-hidden="true"></i>
-                            </button>
+            // Construir DOM de forma segura (evita template literals complejos que rompen el linter)
+            const mainWrap = document.createElement('div');
+            mainWrap.className = 'resource-item-main';
+            mainWrap.style.cssText = 'display:flex; gap:12px; align-items:flex-start;';
 
-                            <button class="btn btn-secondary btn-icon btn-edit-resource" title="Editar recurso" style="display:inline-flex" data-resource-id="${resource._id || ''}">
-                            <i class="fas fa-pen" aria-hidden="true"></i>
-                            </button>
+            // Izquierda: icono
+            const left = document.createElement('div');
+            left.className = 'resource-left';
+            left.style.cssText = 'flex:0 0 44px; display:flex; align-items:center; justify-content:center;';
+            left.innerHTML = iconHTML || '';
+            mainWrap.appendChild(left);
 
-                            <button class="btn btn-danger btn-icon btn-delete-resource" title="Eliminar recurso" style="display:inline-flex" data-resource-id="${resource._id || ''}">
-                            <i class="fas fa-trash" aria-hidden="true"></i>
-                            </button>
-                        </div>
-                        ` : `
-                        ${resource.type === 'actividad' ? `<button class="btn add-submission-btn" data-activity-id="${resource._id || ''}">Agregar entrega</button>` : ''}
-                        `}
-                    </div>
-                </div>
-            `;
+            // Cuerpo
+            const body = document.createElement('div');
+            body.className = 'resource-body';
+            body.style.cssText = 'flex:1;';
+
+            if (resource.type === 'leccion') {
+                const le = document.createElement('div');
+                le.className = 'leccion-preview';
+                le.dataset.resourceId = resource._id || '';
+                const h3 = document.createElement('h3');
+                h3.className = 'leccion-preview-title';
+                h3.style.margin = '0 0 6px 0';
+                h3.textContent = resource.name || 'Lección';
+                const bodyDiv = document.createElement('div');
+                bodyDiv.className = 'leccion-preview-body';
+                bodyDiv.innerHTML = previewHtml || '';
+                le.appendChild(h3);
+                le.appendChild(bodyDiv);
+                body.appendChild(le);
+            } else if (resource.type === 'archivo') {
+                const a = document.createElement('a');
+                a.href = resourceLink || '#';
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                a.className = 'resource-link';
+                a.style.cssText = 'text-decoration:none; color:inherit;';
+                const content = document.createElement('div');
+                content.className = 'resource-item-content';
+                const span = document.createElement('span');
+                span.textContent = resourceName || '';
+                content.appendChild(span);
+                a.appendChild(content);
+                body.appendChild(a);
+            } else {
+                const act = document.createElement('div');
+                act.className = 'actividad-preview';
+                const title = document.createElement('div');
+                title.className = 'actividad-title';
+                title.style.marginBottom = '6px';
+                const strong = document.createElement('strong');
+                strong.textContent = resourceName || '';
+                title.appendChild(strong);
+                const actBody = document.createElement('div');
+                actBody.className = 'actividad-body';
+                actBody.innerHTML = previewHtml || '';
+                act.appendChild(title);
+                act.appendChild(actBody);
+                body.appendChild(act);
+            }
+
+            mainWrap.appendChild(body);
+
+            // Acciones
+            const actionsWrap = document.createElement('div');
+            actionsWrap.className = 'resource-item-actions';
+            actionsWrap.style.cssText = 'margin-left:12px; display:flex; flex-direction:column; gap:6px; align-items:flex-end;';
+
+            const actionsInner = document.createElement('div');
+            actionsInner.style.cssText = 'display:flex; gap:8px; align-items:center;';
+
+            if (isAdmin) {
+                const btnView = document.createElement('button');
+                btnView.className = 'btn btn-icon btn-view-resource';
+                btnView.title = resource.type === 'actividad' ? 'Ver entregas' : resource.type === 'leccion' ? 'Ver lección' : 'Abrir archivo';
+                btnView.style.display = 'inline-flex';
+                btnView.dataset.resourceId = resource._id || '';
+                btnView.innerHTML = `<i class="fas ${resource.type === 'actividad' ? 'fa-list' : resource.type === 'leccion' ? 'fa-eye' : 'fa-file'}" aria-hidden="true"></i>`;
+                actionsInner.appendChild(btnView);
+
+                const btnEdit = document.createElement('button');
+                btnEdit.className = 'btn btn-secondary btn-icon btn-edit-resource';
+                btnEdit.title = 'Editar recurso';
+                btnEdit.style.display = 'inline-flex';
+                btnEdit.dataset.resourceId = resource._id || '';
+                btnEdit.innerHTML = '<i class="fas fa-pen" aria-hidden="true"></i>';
+                actionsInner.appendChild(btnEdit);
+
+                const btnDel = document.createElement('button');
+                btnDel.className = 'btn btn-danger btn-icon btn-delete-resource';
+                btnDel.title = 'Eliminar recurso';
+                btnDel.style.display = 'inline-flex';
+                btnDel.dataset.resourceId = resource._id || '';
+                btnDel.innerHTML = '<i class="fas fa-trash" aria-hidden="true"></i>';
+                actionsInner.appendChild(btnDel);
+            } else {
+                if (resource.type === 'archivo') {
+                    const btnFile = document.createElement('button');
+                    btnFile.className = 'btn btn-icon btn-view-resource';
+                    btnFile.title = 'Abrir archivo';
+                    btnFile.style.display = 'inline-flex';
+                    btnFile.dataset.resourceId = resource._id || '';
+                    btnFile.dataset.resourceType = 'archivo';
+                    btnFile.innerHTML = '<i class="fas fa-file" aria-hidden="true"></i>';
+                    actionsInner.appendChild(btnFile);
+                }
+                if (resource.type === 'leccion') {
+                    const btnLesson = document.createElement('button');
+                    btnLesson.className = 'btn btn-icon btn-view-resource';
+                    btnLesson.title = 'Ver lección';
+                    btnLesson.style.display = 'inline-flex';
+                    btnLesson.dataset.resourceId = resource._id || '';
+                    btnLesson.dataset.resourceType = 'leccion';
+                    btnLesson.innerHTML = '<i class="fas fa-eye" aria-hidden="true"></i>';
+                    actionsInner.appendChild(btnLesson);
+                }
+                if (resource.type === 'actividad') {
+                    const addBtn = document.createElement('button');
+                    addBtn.className = 'btn add-submission-btn';
+                    addBtn.dataset.activityId = resource._id || '';
+                    addBtn.textContent = 'Agregar entrega';
+                    actionsInner.appendChild(addBtn);
+                }
+            }
+
+            actionsWrap.appendChild(actionsInner);
+            mainWrap.appendChild(actionsWrap);
+
+            resourceElement.appendChild(mainWrap);
 
             // Si es actividad: añadir meta (fecha + countdown) y arrancar contador
             if (resource.type === 'actividad') {

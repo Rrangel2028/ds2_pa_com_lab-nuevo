@@ -6,8 +6,10 @@ import { ActividadSchema } from './schemas/actividades.schema';
 import { Actividad } from './entities/actividad.entity';
 
 @Module({
-  imports :[
-  MongooseModule.forFeature([{ name: Actividad.name, schema: ActividadSchema }])
+  imports: [
+    MongooseModule.forFeature([
+      { name: Actividad.name, schema: ActividadSchema },
+    ]),
   ],
   controllers: [ActividadesController],
   providers: [ActividadesService],

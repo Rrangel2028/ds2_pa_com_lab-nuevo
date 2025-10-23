@@ -5,8 +5,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { EntregaSchema } from './schemas/entregas.schema';
 
 @Module({
-  imports :[
-  MongooseModule.forFeature([{ name: 'Entrega', schema: EntregaSchema }])
+  imports: [
+    MongooseModule.forFeature([{ name: 'Entrega', schema: EntregaSchema }]),
   ],
   controllers: [EntregasController],
   providers: [EntregasService],

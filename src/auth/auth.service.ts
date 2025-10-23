@@ -27,13 +27,15 @@ export class AuthService {
       role, // Asignar el rol al objeto del usuario
     };
 
-    const newUser = await this.usuariosService.create(userToCreate as CreateUsuarioDto);
-    
+    const newUser = await this.usuariosService.create(
+      userToCreate as CreateUsuarioDto,
+    );
+
     if (newUser && typeof newUser.toObject === 'function') {
       const { password: _, ...userWithoutPassword } = newUser.toObject();
       return userWithoutPassword;
     }
-    
+
     return newUser;
   }
 
@@ -41,16 +43,19 @@ export class AuthService {
     const user = await this.usuariosService.findByEmail(email);
 
     if (user) {
-        const isPasswordMatching = await bcrypt.compare(passwordLogin, user.password);
-        if (isPasswordMatching) {
-            // Añadir el rol al payload del token JWT
-            const payload = { email: user.email, sub: user._id, role: user.role };
-            return {
-                access_token: this.jwtService.sign(payload),
-            };
-        }
+      const isPasswordMatching = await bcrypt.compare(
+        passwordLogin,
+        user.password,
+      );
+      if (isPasswordMatching) {
+        // Añadir el rol al payload del token JWT
+        const payload = { email: user.email, sub: user._id, role: user.role };
+        return {
+          access_token: this.jwtService.sign(payload),
+        };
+      }
     }
-    
+
     throw new UnauthorizedException('Credenciales incorrectas');
   }
 }

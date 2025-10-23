@@ -8,7 +8,9 @@ import { ContenidoSchema } from './schemas/contenidos.schema';
 
 @Injectable()
 export class ContenidosService {
-  constructor(@InjectModel(Contenidos.name) private contenidoModel: Model<Contenidos>) {}
+  constructor(
+    @InjectModel(Contenidos.name) private contenidoModel: Model<Contenidos>,
+  ) {}
 
   async create(createContenidoDto: CreateContenidosDto): Promise<Contenidos> {
     const createdContenido = new this.contenidoModel(createContenidoDto);
@@ -27,11 +29,16 @@ export class ContenidosService {
     return this.contenidoModel.findById(Id).populate('Unidades').exec();
   }
 
-  async update(id: string, UpdateContenidoDto: UpdateContenidosDto): Promise<Contenidos | null> {
-    return this.contenidoModel.findByIdAndUpdate(id, UpdateContenidoDto, { new: true }).exec();
+  async update(
+    id: string,
+    UpdateContenidoDto: UpdateContenidosDto,
+  ): Promise<Contenidos | null> {
+    return this.contenidoModel
+      .findByIdAndUpdate(id, UpdateContenidoDto, { new: true })
+      .exec();
   }
 
   async remove(id: string): Promise<Contenidos | null> {
-    return this.contenidoModel.findByIdAndDelete(id).exec()
-}
+    return this.contenidoModel.findByIdAndDelete(id).exec();
+  }
 }

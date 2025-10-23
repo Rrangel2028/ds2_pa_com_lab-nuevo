@@ -1,49 +1,49 @@
 // ...existing code...
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { Document } from 'mongoose';
-import { Entrega } from '../../Entregas/schemas/entregas.schema'
-import { Archivo } from '../../Archivos/schemas/archivos.schema'
-import { Lecciones } from '../../Lecciones/schemas/lecciones.schema'
+import { Entrega } from '../../Entregas/schemas/entregas.schema';
+import { Archivo } from '../../Archivos/schemas/archivos.schema';
+import { Lecciones } from '../../Lecciones/schemas/lecciones.schema';
 import { Unidades } from '../../Unidades/schemas/unidades.schema'; // <-- nuevo import
 
 @Schema({
-    timestamps: true
+  timestamps: true,
 })
-export class Actividad extends Document{
-    @Prop()
-    type: string;
+export class Actividad extends Document {
+  @Prop()
+  type: string;
 
-    @Prop()
-    name: string;
+  @Prop()
+  name: string;
 
-    @Prop()
-    description: string;
+  @Prop()
+  description: string;
 
-    @Prop()
-    title: string;   
-    
-    @Prop()
-    link: string; 
-    
-    @Prop()
-    status: string;   
-    
-    // relacion con entregas y archivos (ya existente)
-    @Prop([{ type: mongoose.Schema.Types.ObjectId, ref: 'Entrega' }])
-    entregas: Entrega[]
+  @Prop()
+  title: string;
 
-    @Prop([{ type: mongoose.Schema.Types.ObjectId, ref: 'Archivo' }])
-    archivos: Archivo[]
+  @Prop()
+  link: string;
 
-    @Prop([{ type: mongoose.Schema.Types.ObjectId, ref: 'Unidades' }])
-    Unidades: Unidades[]
+  @Prop()
+  status: string;
 
-    @Prop()
-    dueDate: Date;
+  // relacion con entregas y archivos (ya existente)
+  @Prop([{ type: mongoose.Schema.Types.ObjectId, ref: 'Entrega' }])
+  entregas: Entrega[];
 
-    @Prop()
-    allowFiles: boolean;
+  @Prop([{ type: mongoose.Schema.Types.ObjectId, ref: 'Archivo' }])
+  archivos: Archivo[];
+
+  @Prop([{ type: mongoose.Schema.Types.ObjectId, ref: 'Unidades' }])
+  Unidades: Unidades[];
+
+  @Prop()
+  dueDate: Date;
+
+  @Prop()
+  allowFiles: boolean;
 }
 
 export const ActividadSchema = SchemaFactory.createForClass(Actividad);
