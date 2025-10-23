@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // ...existing code...
     const userRole = decodedToken.role;
     const userId = decodedToken.sub;
     const isAdmin = userRole === 'admin';
@@ -33,6 +34,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const authHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
     const authHeadersForFiles = { 'Authorization': `Bearer ${token}` };
     const TINYMCE_API_KEY = 'x47y8wk874ypxcymjqxnrbiromqjh1quzrz0qdkrqvtucz65';
+    window.isAdmin = isAdmin;
+    window.userId = userId;
+    window.authHeaders = authHeaders;
+    window.authHeadersForFiles = authHeadersForFiles;
 
     // --- 2. REFERENCIAS AL DOM ---
     const mainContent = document.querySelector('.main-content');
@@ -874,179 +879,272 @@ async function setupActivityFormLogic() {
         setupStudentDeletion();
     }
     
-        // ...existing code...
-        function openSubmissionModal(activity) {
-            // resolver elementos en runtime
-            const modalEl = window.activityFormModal || document.getElementById('activity-form-modal');
-            const containerEl = window.activityFormContainer || document.getElementById('activity-form-container');
-            const titleEl = window.activityModalTitle || document.getElementById('activity-modal-title');
-            if (!modalEl || !containerEl || !titleEl) {
-                console.error('openSubmissionModal: modal elements not found');
-                showMessage('Formulario de entrega no disponible.', true);
-                return;
+    // ...existing code...
+async function openSubmissionModal(activity, existingSubmission = null) {
+    // elementos modal
+    const modalEl = window.activityFormModal || document.getElementById('activity-form-modal');
+    const containerEl = window.activityFormContainer || document.getElementById('activity-form-container');
+    const titleEl = window.activityModalTitle || document.getElementById('activity-modal-title');
+    if (!modalEl || !containerEl || !titleEl) { showMessage('Formulario de entrega no disponible.', true); return; }
+    if (!activity || !activity._id) { showMessage('ID de actividad no disponible.', true); return; }
+
+    // intentar obtener la entrega del estudiante si no se pasó
+    try {
+        if (!existingSubmission) {
+            const tokenLocal = localStorage.getItem('access_token') || '';
+            const headers = tokenLocal ? { 'Authorization': 'Bearer ' + tokenLocal } : {};
+            const q = `/entregas?actividadId=${encodeURIComponent(activity._id)}&studentId=${encodeURIComponent(window.userId || '')}`;
+            const r = await fetch(q, { headers, credentials: 'include', cache: 'no-store' });
+            if (r.ok) {
+                const arr = await r.json().catch(()=>[]);
+                if (Array.isArray(arr) && arr.length) existingSubmission = arr[0];
+                else if (arr && arr._id) existingSubmission = arr;
             }
+        }
+    } catch (err) {
+        console.warn('No se pudo comprobar entrega existente:', err);
+    }
 
-            if (!activity || !activity._id) {
-                console.warn('openSubmissionModal: activity._id no disponible', activity);
-                showMessage('No se pudo abrir la actividad: ID no disponible.', true);
-                return;
-            }
+    // mostrar modal
+    modalEl.style.display = 'flex';
+    modalEl.style.alignItems = 'center';
+    modalEl.style.justifyContent = 'center';
+    titleEl.textContent = existingSubmission ? 'Editar entrega' : 'Entregar actividad';
+    containerEl.innerHTML = '<div style="padding:18px;">Cargando formulario...</div>';
 
-            const storedToken = localStorage.getItem('access_token');
-            if (!storedToken) {
-                showMessage('Sesión no válida. Inicia sesión de nuevo.', true);
-                setTimeout(() => window.location.replace('index.html'), 700);
-                return;
-            }
+    // Si el servidor ofrece un formulario (API), preferirlo — si no, usar fallback
+    try {
+        const tokenLocal = localStorage.getItem('access_token') || '';
+        const headers = tokenLocal ? { 'Authorization': 'Bearer ' + tokenLocal } : {};
+        const resp = await fetch(`/actividades/${activity._id}/entrega/form`, { method: 'GET', headers, credentials: 'include', redirect: 'follow' });
+        const text = await resp.text().catch(()=>'');
 
-            modalEl.style.display = 'flex';
-            modalEl.style.alignItems = 'center';
-            modalEl.style.justifyContent = 'center';
-            titleEl.textContent = 'Entregar actividad';
-            containerEl.innerHTML = '<div class="loading">Cargando formulario...</div>';
+        const loginIndicators = ['Correo Electrónico','Contraseña','<form','Entrar'];
+        const looksLikeLogin = loginIndicators.some(ind => text.includes(ind) && text.indexOf(ind) < 4000);
 
-            (async () => {
-                try {
-                    const headers = (typeof authHeaders !== 'undefined' && authHeaders) ? authHeaders : { 'Authorization': `Bearer ${storedToken}` };
+        if (!resp.ok || looksLikeLogin || (resp.url && (resp.url.includes('/login') || resp.url.endsWith('/index.html')))) {
+            // Fallback form (estilizado) que soporta crear o editar y eliminar archivos previos
+            const existingFiles = (existingSubmission && Array.isArray(existingSubmission.archivos)) ? existingSubmission.archivos : [];
+            const existingFilesHtml = existingFiles.length ? existingFiles.map((f, idx) => {
+                const url = f.url || f.path || f.fileUrl || '';
+                const name = f.originalname || f.name || f.filename || (url ? url.split('/').pop() : 'archivo');
+                const href = url ? (url.startsWith('http') ? url : (window.location.origin + (url.startsWith('/') ? url : '/' + url))) : '#';
+                // añadimos data-file-index y data-file-id si existe para identificación
+                const fidAttr = f._id ? `data-file-id="${f._id}"` : `data-file-name="${encodeURIComponent(name)}"`;
+                return `<div class="existing-file-row" ${fidAttr} data-file-idx="${idx}" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;">
+                            <a href="${href}" target="_blank" rel="noopener noreferrer">${escapeHtml(name)}</a>
+                            <button type="button" class="btn-remove-existing-file" title="Eliminar archivo" style="background:transparent;border:0;color:#e74c3c;cursor:pointer;">Eliminar</button>
+                        </div>`;
+            }).join('') : '<div style="color:#666">No hay archivos previos</div>';
 
-                    const resp = await fetch(`/actividades/${activity._id}/entrega/form`, {
-                          method: 'GET',
-                        headers,
-                        credentials: 'include',
-                        redirect: 'follow'
-                    });
-
-                    console.log('openSubmissionModal - fetch status:', resp.status, 'url:', resp.url);
-
-                    if (resp.status === 401 || resp.status === 403) {
-                        showMessage('Sesión expirada o sin permiso. Inicia sesión de nuevo.', true);
-                        modalEl.style.display = 'none';
-                        setTimeout(() => window.location.replace('index.html'), 700);
-                        return;
-                    }
-
-                    const text = await resp.text();
-
-                    const loginIndicators = ['Correo Electrónico', 'Contraseña', 'Entrar', 'Accede a tu Estudio', 'name="email"', 'name="password"', '<form', 'type="password"'];
-                    const looksLikeLogin = loginIndicators.some(ind => text.includes(ind) && text.indexOf(ind) < 4000);
-
-                    if (!resp.ok || looksLikeLogin || (resp.url && (resp.url.includes('/login') || resp.url.endsWith('/index.html')))) {
-                        console.warn('openSubmissionModal: servidor devolvió login/error en lugar del formulario. status:', resp.status, 'url:', resp.url);
-
-                        // Fallback inline: pequeño formulario para enviar la entrega directamente
-                        containerEl.innerHTML = `
-                            <div style="padding:12px;">
-                                <p style="margin:0 0 8px 0; font-weight:600;">Enviar respuesta (fallback)</p>
-                                <form id="submission-form-inline" style="display:flex;flex-direction:column;gap:8px;">
-                                    <textarea id="submission-comment-inline" rows="4" placeholder="Comentario (opcional)"></textarea>
-                                    <input id="submission-files-inline" type="file" multiple />
-                                    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
-                                    <button type="button" id="cancel-submission-btn-inline" class="btn">Cancelar</button>
-                                    <button type="button" id="submit-delivery-btn-inline" class="btn btn-primary">Enviar</button>
-                                    </div>
-                                </form>
+            containerEl.innerHTML = `
+                <div style="padding:18px 12px; max-width:900px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                        <div style="flex:1;">
+                            <label style="font-weight:600; display:block; margin-bottom:6px;">Comentario (opcional)</label>
+                            <textarea id="submission-comment-inline" style="width:100%; min-height:120px; padding:10px; border-radius:8px; border:1px solid #e6e6e6;">${escapeHtml(existingSubmission?.comment || existingSubmission?.comentario || '')}</textarea>
+                            <div style="margin-top:10px;">
+                                <label style="font-weight:600; display:block; margin-bottom:6px;">Archivos existentes</label>
+                                <div id="existing-files-list" style="background:#fafafa; padding:8px; border-radius:6px; border:1px dashed #eee;">${existingFilesHtml}</div>
                             </div>
-                        `;
+                        </div>
 
-                        // Cancelar
-                        containerEl.querySelector('#cancel-submission-btn-inline')?.addEventListener('click', () => {
-                            try { modalEl.style.display = 'none'; } catch(e) {}
-                        });
+                        <div style="width:300px; display:flex; flex-direction:column; gap:8px;">
+                            <label style="font-weight:600;">Adjuntar archivos (opcional)</label>
+                            <input id="submission-files-hidden" type="file" multiple style="display:none" />
+                            <button id="submission-files-choose" type="button" style="padding:8px; border-radius:8px; border:1px solid #d0d7de; background:#fff; cursor:pointer;">Elegir archivos</button>
+                            <div id="submission-files-list" style="min-height:86px; background:#fff; border:1px dashed #e9e9e9; padding:8px; border-radius:6px; overflow:auto; font-size:0.92rem; color:#333;">
+                                <div style="color:#888;">Ningún archivo seleccionado</div>
+                            </div>
+                        </div>
+                    </div>
 
-                // Envío inline
-                containerEl.querySelector('#submit-delivery-btn-inline')?.addEventListener('click', async (ev) => {
-                    const btn = ev.target;
-                    btn.disabled = true;
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+                        <div id="submission-inline-msg" style="color:#28a745; font-weight:600; display:none;"></div>
+                        <div style="display:flex; gap:10px;">
+                            <button id="cancel-submission-btn-inline" type="button" class="btn" style="background:#f3f3f3;border:0;padding:10px 16px;border-radius:8px;cursor:pointer;">Cancelar</button>
+                            <button id="submit-delivery-btn-inline" type="button" class="btn btn-primary" style="background:#e74c3c;color:#fff;border:0;padding:10px 16px;border-radius:12px;cursor:pointer;">${existingSubmission ? 'Actualizar' : 'Enviar'}</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // hooks
+            const fileInputHidden = containerEl.querySelector('#submission-files-hidden');
+            const chooseBtn = containerEl.querySelector('#submission-files-choose');
+            const filesListEl = containerEl.querySelector('#submission-files-list');
+            const existingFilesListEl = containerEl.querySelector('#existing-files-list');
+            const commentEl = containerEl.querySelector('#submission-comment-inline');
+            const btnCancel = containerEl.querySelector('#cancel-submission-btn-inline');
+            const btnSend = containerEl.querySelector('#submit-delivery-btn-inline');
+            const msgEl = containerEl.querySelector('#submission-inline-msg');
+
+            let selectedFilesInline = [];
+            // archivos marcados para eliminar (puede contener object ids o names)
+            let filesToRemove = [];
+
+            function renderFilesList() {
+                filesListEl.innerHTML = '';
+                if (!selectedFilesInline.length) {
+                    filesListEl.innerHTML = '<div style="color:#888;">Ningún archivo seleccionado</div>';
+                    return;
+                }
+                selectedFilesInline.forEach((f, i) => {
+                    const row = document.createElement('div');
+                    row.style.display = 'flex';
+                    row.style.justifyContent = 'space-between';
+                    row.style.alignItems = 'center';
+                    row.style.padding = '6px 4px';
+                    row.innerHTML = `<div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${escapeHtml(f.name)}</div>
+                                     <div style="display:flex; gap:8px; align-items:center;">
+                                       <div style="color:#888; font-size:0.85rem;">${Math.round(f.size/1024)} KB</div>
+                                       <button data-idx="${i}" type="button" style="background:transparent;border:0;color:#e74c3c;cursor:pointer;">✕</button>
+                                     </div>`;
+                    filesListEl.appendChild(row);
+                });
+            }
+
+            // eliminar archivo existente (solo en UI y marcar para enviar)
+            existingFilesListEl.addEventListener('click', async (ev) => {
+                const btn = ev.target.closest('.btn-remove-existing-file');
+                if (!btn) return;
+                const row = btn.closest('.existing-file-row');
+                if (!row) return;
+                if (!confirm('¿Eliminar este archivo de la entrega?')) return;
+
+                // obtener identificadores
+                const fileId = row.getAttribute('data-file-id');
+                const fileNameEnc = row.getAttribute('data-file-name');
+                if (fileId) filesToRemove.push({ _id: fileId });
+                else if (fileNameEnc) filesToRemove.push({ name: decodeURIComponent(fileNameEnc) });
+
+                // remover del DOM inmediatamente
+                row.remove();
+
+                // OPTIONAL: intentar eliminar inmediatamente en backend si hay endpoint /archivos/:id
+                if (fileId) {
                     try {
-                        const files = Array.from(containerEl.querySelector('#submission-files-inline')?.files || []);
-                        const comment = containerEl.querySelector('#submission-comment-inline')?.value || '';
+                        const resDel = await fetch(`/archivos/${fileId}`, { method: 'DELETE', headers: (typeof authHeaders !== 'undefined' ? authHeaders : window.authHeaders) });
+                        if (!resDel.ok) {
+                            // no fatal: mantener en filesToRemove para intentar en submit
+                            console.warn('No se pudo borrar archivo inmediato, se intentará al actualizar.', resDel.status);
+                        }
+                    } catch (err) {
+                        console.warn('Error borrando archivo inmediatamente:', err);
+                    }
+                }
+            });
 
-                        if (files.length === 0) {
-                            // enviar JSON cuando no hay archivos
-                            const payload = {
-                                actividadId: activity._id,
-                                studentId: userId || '',
-                                comment,
-                                submitAt: new Date().toISOString()
-                            };
-                            const tokenLocal = localStorage.getItem('access_token') || '';
-                            const headersJson = { 'Content-Type': 'application/json' };
-                            if (tokenLocal) headersJson['Authorization'] = 'Bearer ' + tokenLocal;
+            chooseBtn.addEventListener('click', () => fileInputHidden.click());
+            fileInputHidden.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files || []);
+                for (const f of files) {
+                    if (!selectedFilesInline.some(s => s.name === f.name && s.size === f.size)) selectedFilesInline.push(f);
+                    if (selectedFilesInline.length >= 20) break;
+                }
+                renderFilesList();
+            });
 
-                            const resPost = await fetch('/entregas', {
-                                method: 'POST',
-                                headers: headersJson,
-                                body: JSON.stringify(payload)
-                            });
+            filesListEl.addEventListener('click', (ev) => {
+                const btn = ev.target.closest('button[data-idx]');
+                if (!btn) return;
+                const i = Number(btn.getAttribute('data-idx'));
+                selectedFilesInline.splice(i, 1);
+                renderFilesList();
+            });
 
-                            if (!resPost.ok) {
-                                const errBody = await resPost.json().catch(()=>null);
-                                throw new Error(errBody?.message || `Error ${resPost.status}`);
-                            }
-                        } else {
-                            // enviar FormData si hay archivos
-                            const fd = new FormData();
-                            fd.append('actividadId', activity._id);
-                            fd.append('studentId', userId || '');
-                            fd.append('comment', comment);
-                            for (let i = 0; i < files.length; i++) fd.append('files', files[i], files[i].name);
+            btnCancel.addEventListener('click', () => { try { modalEl.style.display = 'none'; } catch(e){} });
 
-                            const tokenLocal = localStorage.getItem('access_token') || '';
-                            const headersPost = tokenLocal ? { 'Authorization': 'Bearer ' + tokenLocal } : {};
+            btnSend.addEventListener('click', async () => {
+                btnSend.disabled = true;
+                const oldText = btnSend.textContent;
+                btnSend.textContent = existingSubmission ? 'Actualizando...' : 'Enviando...';
+                msgEl.style.display = 'none';
+                try {
+                    const maxFiles = 5;
+                    const maxTotalBytes = 50 * 1024 * 1024;
+                    if (selectedFilesInline.length > maxFiles) throw new Error(`Máx ${maxFiles} archivos.`);
+                    const total = selectedFilesInline.reduce((s,f)=>s+f.size,0);
+                    if (total > maxTotalBytes) throw new Error('Tamaño total excede 50MB.');
 
-                            const resPost = await fetch('/entregas', {
-                                method: 'POST',
-                                headers: headersPost,
-                                body: fd
-                            });
-
-                            if (!resPost.ok) {
-                                const errBody = await resPost.json().catch(()=>null);
-                                throw new Error(errBody?.message || `Error ${resPost.status}`);
+                    // Si editing -> PATCH /entregas/:id ; si new -> POST /entregas
+                    if (existingSubmission && existingSubmission._id) {
+                        // intentamos eliminar archivos marcados via API antes de enviar PATCH si detectamos _id
+                        for (const rem of filesToRemove) {
+                            if (rem._id) {
+                                try {
+                                    await fetch(`/archivos/${rem._id}`, { method: 'DELETE', headers: (typeof authHeaders !== 'undefined' ? authHeaders : window.authHeaders) });
+                                } catch (err) { /* ignore, se intentará en patch */ }
                             }
                         }
 
-                        showMessage('Entrega enviada correctamente.');
-                        modalEl.style.display = 'none';
-                        if (typeof loadUnitContent === 'function') loadUnitContent(state.currentUnitId);
-                    } catch (err) {
-                        console.error('Error envío inline (fallback):', err);
-                        showMessage(err.message || 'Fallo al enviar entrega', true);
-                    } finally {
-                        btn.disabled = false;
-                    }
-                });
+                        const fd = new FormData();
+                        fd.append('comment', commentEl.value || '');
+                        fd.append('submitAt', new Date().toISOString());
+                        // anexar nuevos archivos si el usuario indicó
+                        selectedFilesInline.forEach(f => fd.append('files', f, f.name));
+                        // si el backend acepta lista de archivos a eliminar como removeFiles, la incluimos
+                        if (filesToRemove.length) fd.append('removeFiles', JSON.stringify(filesToRemove));
 
-                        return;
-                    }
-
-                    // Si aquí, la respuesta es el HTML esperado -> inyectar
-                    containerEl.innerHTML = text;
-                    containerEl.querySelector('#cancel-submission-btn')?.addEventListener('click', () => {
-                        try { modalEl.style.display = 'none'; } catch(e) {}
-                    });
-
-                    // Inicializar countdown y lógica de envío dentro del container (si aplica)
-                    if (activity.dueDate) {
-                        startDeadlineCountdown(activity.dueDate, containerEl.querySelector('#deadline-countdown'), () => {
-                            const submitBtn = containerEl.querySelector('#submit-delivery-btn');
-                            if (submitBtn) {
-                                submitBtn.disabled = true;
-                                submitBtn.textContent = 'Entrega cerrada';
-                            }
-                            showMessage('La fecha límite ha pasado. No se pueden aceptar más entregas.', true);
+                        const tokenLocal = localStorage.getItem('access_token') || '';
+                        const headersPatch = tokenLocal ? { 'Authorization': 'Bearer ' + tokenLocal } : {};
+                        const res = await fetch(`/entregas/${existingSubmission._id}`, {
+                            method: 'PATCH',
+                            headers: headersPatch,
+                            body: fd
                         });
+                        const body = await res.json().catch(()=>null);
+                        if (!res.ok) throw new Error(body?.message || `Error ${res.status}`);
+                    } else {
+                        const fd = new FormData();
+                        fd.append('actividadId', activity._id);
+                        fd.append('studentId', window.userId || '');
+                        fd.append('comment', commentEl.value || '');
+                        fd.append('submitAt', new Date().toISOString());
+                        selectedFilesInline.forEach(f => fd.append('files', f, f.name));
+
+                        const tokenLocal = localStorage.getItem('access_token') || '';
+                        const headersPost = tokenLocal ? { 'Authorization': 'Bearer ' + tokenLocal } : {};
+                        const res = await fetch('/entregas', {
+                            method: 'POST',
+                            headers: headersPost,
+                            body: fd
+                        });
+                        const body = await res.json().catch(()=>null);
+                        if (!res.ok) throw new Error(body?.message || `Error ${res.status}`);
                     }
 
-                    if (typeof setupSubmissionLogic === 'function') setupSubmissionLogic(activity);
-                    else console.warn('setupSubmissionLogic no está definida.');
+                    msgEl.textContent = existingSubmission ? 'Entrega actualizada.' : 'Entrega enviada correctamente.';
+                    msgEl.style.display = 'block';
+                    // cerrar y recargar lista
+                    setTimeout(()=> {
+                        try { modalEl.style.display = 'none'; } catch(e){}
+                        if (typeof loadUnitContent === 'function') loadUnitContent(state.currentUnitId);
+                    }, 700);
                 } catch (err) {
-                    console.error('Error al abrir formulario de entrega:', err);
-                    showMessage('No se pudo abrir el formulario de entrega.', true);
-                    try { modalEl.style.display = 'none'; } catch(e) {}
+                    console.error('Error enviando/actualizando entrega:', err);
+                    showMessage(err?.message || 'Fallo al enviar/actualizar entrega', true);
+                } finally {
+                    btnSend.disabled = false;
+                    btnSend.textContent = oldText;
                 }
-            })();
+            });
+
+            return;
         }
+
+        // Si el servidor devolvió un formulario, lo inyectamos (como antes)
+        containerEl.innerHTML = text;
+        containerEl.querySelector('#cancel-submission-btn')?.addEventListener('click', () => { try { modalEl.style.display = 'none'; } catch(e){} });
+
+        // intentar enganchar la lógica del formulario servido (si existe)
+        if (typeof setupSubmissionLogic === 'function') setupSubmissionLogic(activity);
+    } catch (err) {
+        console.error('openSubmissionModal fallo:', err);
+        containerEl.innerHTML = `<div style="padding:18px;color:#c0392b;">No se pudo abrir el formulario de entrega.</div>`;
+    }
+}
+// ...existing code...
 
     function initializeCourseContentView(curso) {
         // Adjuntar handler de lista de unidades solo una vez
@@ -2363,6 +2461,45 @@ async function setupActivityFormLogic() {
 
         lessonsContainer.appendChild(fragment);
 
+        // ---- nueva lógica: para cada actividad, comprobar si el usuario ya entregó ----
+        (async () => {
+            try {
+                // buscar todas las filas de actividad añadidas
+                const actividadEls = Array.from(lessonsContainer.querySelectorAll('.resource-item-list[data-resource-type="actividad"]'));
+                if (!actividadEls.length) return;
+                // preparar peticiones en paralelo
+                const checks = actividadEls.map(async el => {
+                    const actId = el.dataset.resourceId;
+                    const btn = el.querySelector('.add-submission-btn');
+                    if (!actId || !btn) return;
+                    try {
+                        const tokenLocal = localStorage.getItem('access_token') || '';
+                        const headers = tokenLocal ? { 'Authorization': 'Bearer ' + tokenLocal } : {};
+                        const q = `/entregas?actividadId=${encodeURIComponent(actId)}&studentId=${encodeURIComponent(window.userId || '')}`;
+                        const r = await fetch(q, { headers, credentials: 'include', cache: 'no-store' });
+                        if (!r.ok) return;
+                        const arr = await r.json().catch(()=>[]);
+                        const exists = Array.isArray(arr) && arr.length ? arr[0] : (arr && arr._id ? arr : null);
+                        if (exists) {
+                            btn.textContent = 'Editar entrega';
+                            btn.classList.remove('add-submission-btn');
+                            btn.classList.add('edit-submission-btn');
+                            btn.dataset.submissionId = exists._id;
+                            // al hacer click abrir con la submission
+                            btn.addEventListener('click', (ev) => {
+                                ev.preventDefault();
+                                openSubmissionModal({ _id: actId, name: el.querySelector('.actividad-title')?.textContent || '' }, exists);
+                            });
+                        } else {
+                            // si no existe: mantener comportamiento para crear; ya hay listener delegado que llama openSubmissionModal
+                            btn.textContent = 'Agregar entrega';
+                        }
+                    } catch (err) { /* ignore per-item errors */ }
+                });
+                await Promise.all(checks);
+            } catch (err) { console.warn('Error comprobando entregas del usuario:', err); }
+        })();
+
         // Marcar elementos con lección para estilos/identificación (opcional)
         try {
             document.querySelectorAll('.resource-item-list').forEach(item => {
@@ -2376,12 +2513,6 @@ async function setupActivityFormLogic() {
         } catch (err) {
             console.warn('initializeDragAndDrop falló:', err);
         }
-    }
-
-    /* Helper pequeño para escapar texto plano en títulos (evita inyección en el título mostrado) */
-    function escapeHtml(str) {
-        return String(str || '').replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
-
     }
 
     // --- 7. PESTAÑA "PARTICIPANTES" ---
@@ -2509,17 +2640,18 @@ async function setupActivityFormLogic() {
         return interval;
     }
 
-        // ...existing code...
+        // Reemplaza la función openViewSubmissionsModal por esta versión que renderiza una tabla
         async function openViewSubmissionsModal(activityId) {
+            const isAdminLocal = (typeof isAdmin !== 'undefined') ? isAdmin : !!window.isAdmin;
             if (!activityId) return showMessage('ID de actividad inválida.', true);
 
             const token = localStorage.getItem('access_token') || '';
-            const headers = (typeof authHeaders !== 'undefined' && authHeaders) ? { ...authHeaders } : {};
+            const headers = (typeof authHeaders !== 'undefined' && authHeaders) ? { ...authHeaders } : (window.authHeaders ? { ...window.authHeaders } : {});
             delete headers['Content-Type'];
             delete headers['content-type'];
             if (!headers['Authorization'] && token) headers['Authorization'] = `Bearer ${token}`;
 
-            // Crear/mostrar modal
+            // crear/mostrar modal
             let modal = document.getElementById('view-submissions-modal');
             if (!modal) {
                 modal = document.createElement('div');
@@ -2535,7 +2667,7 @@ async function setupActivityFormLogic() {
                 modal.style.justifyContent = 'center';
                 modal.style.background = 'rgba(0,0,0,0.45)';
                 modal.innerHTML = `
-                    <div id="view-submissions-card" style="background:#fff; max-width:1000px; width:95%; max-height:80vh; overflow:auto; border-radius:8px; padding:18px;">
+                    <div id="view-submissions-card" style="background:#fff; max-width:1100px; width:95%; max-height:80vh; overflow:auto; border-radius:8px; padding:18px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                             <h3 style="margin:0;">Entregas</h3>
                             <button id="view-submissions-close" aria-label="Cerrar" style="background:#fff;border:0;font-size:1.6rem;cursor:pointer;">&times;</button>
@@ -2546,56 +2678,125 @@ async function setupActivityFormLogic() {
                 document.body.appendChild(modal);
                 modal.querySelector('#view-submissions-close').addEventListener('click', () => modal.style.display = 'none');
                 modal.addEventListener('click', (ev) => {
-                    const card = document.getElementById('view-submissions-card');
-                    if (!card.contains(ev.target)) modal.style.display = 'none';
+                    if (ev.target === modal) modal.style.display = 'none';
                 });
             } else {
                 const listElPrev = modal.querySelector('#view-submissions-list');
                 if (listElPrev) listElPrev.innerHTML = 'Cargando...';
             }
-
             modal.style.display = 'flex';
+
+            // estilos para tabla
+            const vsStylesId = 'vs-table-styles';
+            if (!document.getElementById(vsStylesId)) {
+                const vsStyles = document.createElement('style');
+                vsStyles.id = vsStylesId;
+                vsStyles.innerHTML = `
+                    #view-submissions-card { padding: 18px; border-radius:10px; box-shadow: 0 10px 30px rgba(0,0,0,0.18); }
+                    #view-submissions-list table { width:100%; border-collapse:collapse; font-family:inherit; }
+                    #view-submissions-list thead th { text-align:left; padding:10px 8px; border-bottom:2px solid #eee; background:#fafafa; font-weight:700; color:#222; }
+                    #view-submissions-list tbody td { padding:10px 8px; border-bottom:1px solid #f1f1f1; vertical-align:top; color:#333; }
+                    #view-submissions-list tbody tr:last-child td { border-bottom:none; }
+                    .status-chip { display:inline-block; padding:6px 8px; border-radius:6px; font-size:0.9rem; }
+                    .status-pending { background:#eaf7ea; color:#166534; }
+                    .status-graded { background:#eef2ff; color:#2b3cff; }
+                    .grade-input { width:86px; padding:6px; border-radius:6px; border:1px solid #ddd; }
+                    .grade-comment-input { width:100%; min-height:48px; padding:8px; border-radius:6px; border:1px solid #ddd; }
+                    .save-grade-btn { background:#e74c3c; color:#fff; border:0; padding:8px 12px; border-radius:20px; cursor:pointer; }
+                    .save-grade-btn[disabled]{ opacity:0.6; cursor:not-allowed; }
+                    a.resource-file-link{ color:#2b6cdf; text-decoration:underline; }
+                    @media (max-width:900px) {
+                        #view-submissions-card { padding:12px; }
+                        #view-submissions-list thead { display:none; }
+                        #view-submissions-list tbody td { display:block; width:100%; box-sizing:border-box; }
+                        #view-submissions-list tbody tr { margin-bottom:10px; display:block; border-bottom:1px solid #eee; padding-bottom:8px; }
+                    }
+                `;
+                document.head.appendChild(vsStyles);
+                const commentsFixId = 'vs-comments-fix';
+                if (!document.getElementById(commentsFixId)) {
+                    const s2 = document.createElement('style');
+                    s2.id = commentsFixId;
+                    s2.innerHTML = `
+                    /* Layout: textarea del docente ocupa el espacio disponible; botón a la derecha */
+                    #view-submissions-list td.teacher-col { padding:10px 8px; vertical-align:top; }
+                    #view-submissions-list td.teacher-col { display:flex; gap:12px; align-items:flex-start; justify-content:space-between; }
+
+                    /* Contenedor izquierdo: textarea ocupa el espacio disponible */
+                    #view-submissions-list td.teacher-col .grade-comment-input {
+                        flex:1;
+                        min-height:96px;
+                        max-height:320px;
+                        width: auto !important;
+                        padding:10px;
+                        border-radius:8px;
+                        border:1px solid #e2e8f0;
+                        resize:vertical;
+                        overflow:auto;
+                        box-sizing:border-box;
+                        font-family:inherit;
+                        font-size:0.95rem;
+                        line-height:1.3;
+                    }
+
+                    /* Contenedor derecho: botón alineado a la parte superior, con espacio */
+                    #view-submissions-list td.teacher-col .save-grade-btn {
+                        flex:0 0 auto;
+                        align-self:flex-start;
+                        margin-left:12px;
+                        padding:10px 16px;
+                        border-radius:20px;
+                        height:auto;
+                    }
+
+                    /* Si hay solo el botón (sin textarea), mantener alineación */
+                    #view-submissions-list td.teacher-col > div.save-wrapper { display:flex; align-items:flex-start; }
+
+                    /* Evitar que la columna de comentario comprima la tabla */
+                    #view-submissions-list td.teacher-col { min-width:220px; max-width:520px; }
+
+                    /* Ajustes responsivos: apilar en pantallas pequeñas */
+                    @media (max-width:900px) {
+                        #view-submissions-card { padding:12px; }
+                        #view-submissions-list thead { display:none; }
+                        #view-submissions-list tbody td { display:block; width:100%; box-sizing:border-box; }
+                        #view-submissions-list td.teacher-col { flex-direction:column; gap:8px; align-items:stretch; }
+                        #view-submissions-list td.teacher-col .save-grade-btn { align-self:flex-end; margin-left:0; }
+                    }
+
+                    /* Estética menor */
+                    .save-grade-btn { background:#e65346; color:#fff; border:0; cursor:pointer; box-shadow:none; }
+                    .save-grade-btn[disabled]{ opacity:0.6; cursor:not-allowed; }
+                    `;
+                    document.head.appendChild(s2);
+                }
+            }
 
             try {
                 const url = `/entregas?actividadId=${encodeURIComponent(activityId)}`;
                 const res = await fetch(url, { headers, credentials: 'include', cache: 'no-store', redirect: 'follow' });
-
                 if (res.status === 401 || res.status === 403 || (res.url && (res.url.includes('/login') || res.url.endsWith('/index.html')))) {
-                    console.warn('openViewSubmissionsModal: no autorizado o redirigido a login', res.status, res.url);
                     showMessage('No autorizado o sesión expirada. Inicia sesión de nuevo.', true);
                     modal.style.display = 'none';
                     return;
                 }
 
                 const txt = await res.text();
-
-                const loginIndicators = ['Correo Electrónico', 'Contraseña', '<form', 'Accede a tu Estudio', 'name="email"', 'name="password"', 'Entrar'];
+                const loginIndicators = ['Correo Electrónico','Contraseña','<form','Entrar'];
                 const looksLikeLogin = loginIndicators.some(ind => txt.includes(ind) && txt.indexOf(ind) < 4000);
 
                 let entregas = [];
                 if (!res.ok || looksLikeLogin) {
-                    console.warn('openViewSubmissionsModal: respuesta inesperada al pedir entregas', res.status);
-                    try {
-                        const allRes = await fetch('/entregas', { headers, credentials: 'include', cache: 'no-store' });
-                        if (!allRes.ok) throw new Error(`Fallback /entregas falló: ${allRes.status}`);
-                        const all = await allRes.json().catch(() => []);
-                        entregas = Array.isArray(all) ? all.filter(it => {
-                            const act = it.actividad || it.actividadId || (it.actividades && it.actividades[0] && (it.actividades[0]._id || it.actividades[0]));
-                            return act && (act === activityId || (act._id && act._id === activityId));
-                        }) : [];
-                    } catch (err) {
-                        console.error('openViewSubmissionsModal fallback /entregas falló:', err);
-                        const listEl = modal.querySelector('#view-submissions-list');
-                        if (listEl) listEl.innerHTML = `<p style="color:#c0392b;">No se pudieron cargar las entregas. Comprueba la conexión o el endpoint (/entregas).</p>`;
-                        return;
-                    }
+                    // fallback a /entregas
+                    const allRes = await fetch('/entregas', { headers, credentials: 'include', cache: 'no-store' });
+                    const all = allRes.ok ? await allRes.json().catch(()=>[]) : [];
+                    entregas = Array.isArray(all) ? all.filter(it => {
+                        const act = it.actividad || it.actividadId || (it.actividades && it.actividades[0] && (it.actividades[0]._id || it.actividades[0]));
+                        return act && (act === activityId || (act._id && act._id === activityId));
+                    }) : [];
                 } else {
-                    try {
-                        const parsed = JSON.parse(txt);
-                        entregas = Array.isArray(parsed) ? parsed : (parsed && parsed.data && Array.isArray(parsed.data) ? parsed.data : []);
-                    } catch (e) {
-                        entregas = await res.json().catch(()=>[]);
-                    }
+                    try { const parsed = JSON.parse(txt); entregas = Array.isArray(parsed) ? parsed : (parsed && parsed.data && Array.isArray(parsed.data) ? parsed.data : []); }
+                    catch (e) { entregas = await res.json().catch(()=>[]); }
                 }
 
                 const listEl = modal.querySelector('#view-submissions-list');
@@ -2606,116 +2807,140 @@ async function setupActivityFormLogic() {
                     return;
                 }
 
-                // DEBUG: mostrar raw en consola
-                console.debug('DEBUG openViewSubmissionsModal entregas raw:', entregas);
-
-               // ...existing code...
-                listEl.innerHTML = '';
-
-                // helper: cache y búsqueda de nombre de usuario si solo tenemos id
+                // helper to get username if only id present
                 const userCache = {};
                 async function fetchUserNameById(id) {
-                if (!id) return 'Estudiante';
-                if (userCache[id]) return userCache[id];
-                try {
-                    const resp = await fetch(`/usuarios/${id}`, { headers, credentials: 'include' });
-                    if (!resp.ok) throw new Error('no user');
-                    const u = await resp.json();
-                    const name = u?.name || u?.nombre || u?.username || u?.email || String(id);
-                    userCache[id] = name;
-                    return name;
-                } catch (e) {
-                    userCache[id] = String(id);
-                    return String(id);
-                }
+                    if (!id) return 'Estudiante';
+                    if (userCache[id]) return userCache[id];
+                    try {
+                        const r = await fetch(`/usuarios/${id}`, { headers, credentials: 'include' });
+                        if (!r.ok) throw new Error('no user');
+                        const u = await r.json();
+                        const name = u?.name || u?.nombre || u?.username || u?.email || String(id);
+                        userCache[id] = name;
+                        return name;
+                    } catch (err) { userCache[id] = String(id); return String(id); }
                 }
 
-                // render con soporte para ids sin poblar; usamos for..of para poder await
-                for (const sub of entregas) {
-                // determinar nombre estudiante (si viene id string lo consultamos)
-                let student = 'Estudiante';
-                if (Array.isArray(sub.usuarios) && sub.usuarios.length) {
-                    const u0 = sub.usuarios[0];
-                    if (typeof u0 === 'string' || typeof u0 === 'object' && !u0.username && !u0.name) {
-                    // si es id string o objeto no poblado, pedir nombre
-                    const idStr = typeof u0 === 'string' ? u0 : (u0 && (u0._id || u0.toString()));
-                    student = await fetchUserNameById(idStr);
-                    } else if (typeof u0 === 'object') {
-                    student = u0.name || u0.nombre || u0.username || u0.email || (u0._id ? String(u0._id) : 'Estudiante');
-                    } else {
-                    student = String(u0);
-                    }
-                } else if (sub.studentId) {
-                    student = String(sub.studentId);
-                } else if (sub.usuario && typeof sub.usuario === 'object') {
-                    student = sub.usuario.name || sub.usuario.username || sub.usuario.email || sub.usuario._id || 'Estudiante';
-                }
-
-                const submittedAtRaw = sub.submitAt || sub.createdAt || sub.fecha || '';
-                const submittedAt = submittedAtRaw ? (new Date(submittedAtRaw)).toLocaleString() : '';
-                const comment = sub.comment || sub.comentario || '';
-                const files = sub.archivos || sub.files || sub.filesList || [];
-
-                const item = document.createElement('div');
-                item.style.padding = '12px 0';
-                item.style.borderBottom = '1px dashed #eee';
-
-                // ...existing code...
                 const baseOrigin = window.location.origin;
-                const filesHtml = (files && files.length) ? files.map(f => {
-                if (!f) return '';
-                const raw = f.url || f.path || null;
-                let href = null;
+                // construir tabla
+                const tableHtml = `
+                    <br>
+                    <table role="grid" aria-label="Lista de entregas">
+                        <thead>
+                            <tr>
+                                <th style="width:18%;">Estudiante</th>
+                                <th style="width:14%;">Fecha</th>
+                                <th style="width:14%;">Estado</th>
+                                <th style="width:10%;">Nota</th>
+                                <th style="width:16%;">Archivo</th>
+                                <th style="width:20%;">Comentario del estudiante</th>
+                                <th style="width:8%;">Comentario del profesor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vs-tbody"></tbody>
+                    </table>
+                `;
+                listEl.innerHTML = tableHtml;
+                const tbody = listEl.querySelector('#vs-tbody');
 
-                if (raw) {
-                    // URL absoluta pública o ya relativa
-                    if (typeof raw === 'string' && raw.startsWith('http')) {
-                    href = raw;
-                    } else if (typeof raw === 'string' && raw.startsWith('/')) {
-                    href = baseOrigin + raw;
-                    } else if (typeof raw === 'string' && raw.indexOf(':') !== -1) {
-                    // Windows absolute path -> extraer filename y construir /uploads/.../filename
-                    const parts = raw.split(/[\\/]/);
-                    const name = parts[parts.length - 1];
-                    href = baseOrigin + '/uploads/entregas/' + encodeURIComponent(name);
-                    } else if (typeof raw === 'string') {
-                    // fallback: treat as relative
-                    href = baseOrigin + (raw.startsWith('/') ? raw : ('/' + raw));
-                    }
-                }
+                // render rows sequentially (so we can await username fetch)
+                for (const sub of entregas) {
+                    const subId = sub._id || sub.id || '';
+                    // student name
+                    let student = 'Estudiante';
+                    if (Array.isArray(sub.usuarios) && sub.usuarios.length) {
+                        const u0 = sub.usuarios[0];
+                        if (typeof u0 === 'string') student = await fetchUserNameById(u0);
+                        else if (typeof u0 === 'object') student = u0.name || u0.nombre || u0.username || u0.email || (u0._id ? String(u0._id) : 'Estudiante');
+                    } else if (sub.studentId) student = await fetchUserNameById(sub.studentId);
+                    else if (sub.usuario && typeof sub.usuario === 'object') student = sub.usuario.name || sub.usuario.username || sub.usuario.email || sub.usuario._id || 'Estudiante';
 
-                // si no hay raw, usar filename si existe
-                if (!href && (f.filename || f.originalname)) {
-                    const name = f.filename || f.originalname;
-                    href = baseOrigin + '/uploads/entregas/' + encodeURIComponent(name);
-                }
+                    const submittedAtRaw = sub.submitAt || sub.createdAt || sub.fecha || '';
+                    const submittedAt = submittedAtRaw ? (new Date(submittedAtRaw)).toLocaleString() : '';
 
-                const name = escapeHtml(f.originalname || f.name || f.filename || (href ? href.split('/').pop() : 'archivo'));
-                return href ? `<div><a href="${href}" target="_blank" rel="noopener noreferrer">${name}</a></div>` : `<div>${name}</div>`;
-                }).join('') : '<div style="color:#999; margin-top:6px;">Sin archivos adjuntos</div>';
-                // ...existing code...
+                    const gradeVal = (sub.grade !== undefined && sub.grade !== null) ? String(sub.grade) : '';
+                    const teacherCommentVal = sub.teacherComment || sub.feedback || '';
 
-                item.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
-                            <div style="flex:1;">
-                                <div style="font-weight:700;">${escapeHtml(String(student))}</div>
-                                <div style="color:#666; font-size:0.9rem;">${escapeHtml(String(submittedAt))}</div>
-                                ${comment ? `<div style="margin-top:8px;">${escapeHtml(String(comment))}</div>` : ''}
-                                <div style="margin-top:8px;">${filesHtml}</div>
-                            </div>
-                        </div>
+                    const statusHtml = (gradeVal === '') ? `<span class="status-chip status-pending">Enviado para calificar</span>` : `<span class="status-chip status-graded">Calificado</span>`;
+
+                    const filesArr = sub.archivos || sub.files || sub.filesList || [];
+                    const filesHtml = (filesArr && filesArr.length) ? filesArr.map(f => {
+                        if (!f) return '';
+                        const raw = f.url || f.path || null;
+                        let href = null;
+                        if (raw) {
+                            if (typeof raw === 'string' && raw.startsWith('http')) href = raw;
+                            else if (typeof raw === 'string' && raw.startsWith('/')) href = baseOrigin + raw;
+                            else if (typeof raw === 'string' && raw.indexOf(':') !== -1) {
+                                const parts = raw.split(/[\\/]/); href = baseOrigin + '/uploads/entregas/' + encodeURIComponent(parts[parts.length - 1]);
+                            } else if (typeof raw === 'string') href = baseOrigin + (raw.startsWith('/') ? raw : ('/' + raw));
+                        }
+                        if (!href && (f.filename || f.originalname)) href = baseOrigin + '/uploads/entregas/' + encodeURIComponent(f.filename || f.originalname);
+                        const name = escapeHtml(f.originalname || f.name || f.filename || (href ? decodeURIComponent(href.split('/').pop()) : 'archivo'));
+                        return href ? `<div><a class="resource-file-link" href="${href}" target="_blank" rel="noopener noreferrer">${name}</a></div>` : `<div>${name}</div>`;
+                    }).join('') : '<div style="color:#666">Sin archivos</div>';
+
+                    const studentComment = escapeHtml(sub.comment || sub.comentario || '');
+
+                    // crear fila
+                    const tr = document.createElement('tr');
+                    tr.dataset.submissionId = subId;
+                    tr.innerHTML = `
+                        <td class="student-col"><strong>${escapeHtml(student)}</strong></td>
+                        <td class="date-col">${escapeHtml(submittedAt)}</td>
+                        <td class="status-col">${statusHtml}</td>
+                        <td class="grade-col">
+                            <input type="number" min="0" step="0.1" class="grade-input" value="${escapeHtml(gradeVal)}" />
+                        </td>
+                        <td class="file-col">${filesHtml}</td>
+                        <td class="student-comment-col">${studentComment}</td>
+                        <td class="teacher-col">
+                            <textarea class="grade-comment-input" placeholder="Comentario docente (opcional)">${escapeHtml(teacherCommentVal)}</textarea>
+                            ${isAdminLocal ? `<div style="margin-top:6px; text-align:right;"><button class="save-grade-btn">Guardar</button></div>` : ''}
+                        </td>
                     `;
-                listEl.appendChild(item);
-                }
-        // ...existing code...
+                    tbody.appendChild(tr);
 
-                // fallback JSON si el render quedó en blanco (posible CSS ocultando contenido)
-                if (!listEl.innerText.trim()) {
-                    listEl.style.whiteSpace = 'pre-wrap';
-                    listEl.style.color = '#222';
-                    listEl.style.fontFamily = 'monospace';
-                    listEl.innerText = JSON.stringify(entregas, null, 2);
-                    console.warn('openViewSubmissionsModal: fallback JSON shown (posible problema de render/CSS).');
+                    // bind save handler if admin
+                    if (isAdminLocal) {
+                        const saveBtn = tr.querySelector('.save-grade-btn');
+                        const gradeInput = tr.querySelector('.grade-input');
+                        const commentInput = tr.querySelector('.grade-comment-input');
+                        const statusCell = tr.querySelector('.status-col');
+                        if (saveBtn && gradeInput && commentInput) {
+                            saveBtn.addEventListener('click', async () => {
+                                const rawGrade = gradeInput.value;
+                                const grade = rawGrade === '' ? null : Number(rawGrade);
+                                const teacherComment = commentInput.value || '';
+                                saveBtn.disabled = true;
+                                saveBtn.textContent = 'Guardando...';
+                                try {
+                                    const payload = { grade, teacherComment };
+                                    const resPatch = await fetch(`/entregas/${subId}`, {
+                                        method: 'PATCH',
+                                        headers: Object.assign({}, (typeof authHeaders !== 'undefined' ? authHeaders : window.authHeaders) || {}, { 'Content-Type': 'application/json' }),
+                                        body: JSON.stringify(payload)
+                                    });
+                                    const body = await resPatch.json().catch(()=>null);
+                                    if (!resPatch.ok) throw new Error(body?.message || `Error ${resPatch.status}`);
+                                    // actualizar UI estado y nota
+                                    if (grade !== null) {
+                                        statusCell.innerHTML = `<span class="status-chip status-graded">Calificado</span>`;
+                                    } else {
+                                        statusCell.innerHTML = `<span class="status-chip status-pending">Enviado para calificar</span>`;
+                                    }
+                                    showMessage('Nota guardada.');
+                                } catch (err) {
+                                    console.error('Error guardando nota:', err);
+                                    showMessage(err.message || 'No se pudo guardar la nota', true);
+                                } finally {
+                                    saveBtn.disabled = false;
+                                    saveBtn.textContent = 'Guardar';
+                                }
+                            });
+                        }
+                    }
                 }
 
             } catch (err) {
@@ -2724,7 +2949,6 @@ async function setupActivityFormLogic() {
                 if (listEl) listEl.innerHTML = `<p style="color:#c0392b;">No se pudieron cargar las entregas. Comprueba la conexión o el endpoint (/entregas). (${escapeHtml(err.message || '')})</p>`;
             }
         }
-        // ...existing code...
 
         function escapeHtml(input) {
             if (input === null || input === undefined) return '';
