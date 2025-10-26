@@ -1,9 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Tipos mostrados en el modal de "Añadir recurso"
     const resourceTypes = [
         { type: 'file', title: 'Subir Archivo', icon: 'fa-file-upload', color: '#4A90E2' },
         { type: 'lesson', title: 'Área de texto y medios', icon: 'fa-file-alt', color: '#50E3C2' },
-        // Cambiado de "Foro" a "Actividad" — modulo.js espera type: 'activity'
         { type: 'activity', title: 'Actividad', icon: 'fa-tasks', color: '#F5A623' }
     ];
 

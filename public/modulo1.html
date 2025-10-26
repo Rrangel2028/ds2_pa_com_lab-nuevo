@@ -91,12 +91,23 @@
       margin-top: 1.5rem;
     }
 
-    /* ---------- Resource Grid (Nuevo) ---------- */
-    #resource-grid-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 1.5rem;
-    }
+  /* ---------- Resource Grid (Nuevo) ---------- */
+  /* Estilos para el grid dentro del modal de recursos. Se ajusta el ancho
+     max para que 3 opciones ocupen bien el espacio y no quede mucho hueco */
+  #resource-grid-container {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    gap: 1rem;
+    justify-content: center;
+    align-items: start;
+    width: 100%;
+    max-width: 520px; /* controla el ancho del contenido dentro del modal */
+    margin: 0 auto;
+  }
+  .modal-content.resource-modal {
+    max-width: 560px; /* más compacto para sólo 3 opciones */
+    padding: 1.25rem;
+  }
     .resource-item {
         display: flex;
         flex-direction: column;
@@ -263,6 +274,7 @@
                     <div class="unit-actions">
                       <button id="add-resource-btn" class="btn btn-primary">
                         Añadir una actividad o un recurso
+                      </button>
                     </div>
                   </div>
 
