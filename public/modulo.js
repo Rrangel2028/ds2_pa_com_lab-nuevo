@@ -956,6 +956,16 @@ async function openSubmissionModal(activity, existingSubmission = null) {
                         </div>
 
                         <div style="width:300px; display:flex; flex-direction:column; gap:8px;">
+                            ${existingSubmission && (existingSubmission.grade !== undefined && existingSubmission.grade !== null) ? `
+                                <div style="padding:10px; border-radius:8px; border:1px solid #e6e6e6; background:#fbfbfb;">
+                                    <div style="font-weight:700; margin-bottom:6px;">Calificación</div>
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <div style="font-size:1.4rem; font-weight:800;">${escapeHtml(String(existingSubmission.grade))}</div>
+                                        ${existingSubmission.performanceLabel ? `<div class="status-chip status-graded" style="background:#eef2ff; color:#2b3cff; padding:6px 8px; border-radius:6px; font-weight:600;">${escapeHtml(existingSubmission.performanceLabel)}</div>` : ''}
+                                    </div>
+                                    ${existingSubmission.teacherComment ? `<div style="margin-top:8px; color:#333;"><strong>Comentario docente:</strong><div style="margin-top:6px;">${escapeHtml(existingSubmission.teacherComment)}</div></div>` : ''}
+                                </div>
+                            ` : ''}
                             <label style="font-weight:600;">Adjuntar archivos (opcional)</label>
                             <input id="submission-files-hidden" type="file" multiple style="display:none" />
                             <button id="submission-files-choose" type="button" style="padding:8px; border-radius:8px; border:1px solid #d0d7de; background:#fff; cursor:pointer;">Elegir archivos</button>
@@ -2602,6 +2612,30 @@ async function openSubmissionModal(activity, existingSubmission = null) {
                                 ev.preventDefault();
                                 openSubmissionModal({ _id: actId, name: el.querySelector('.actividad-title')?.textContent || '' }, exists);
                             });
+                            // mostrar nota y etiqueta al estudiante en la tarjeta de actividad si existen
+                            try {
+                                if (exists.grade !== undefined && exists.grade !== null) {
+                                    const metaEl = el.querySelector('.actividad-meta');
+                                    if (metaEl) {
+                                        const badge = document.createElement('div');
+                                        badge.className = 'student-grade-badge';
+                                        badge.style.cssText = 'margin-top:8px; font-weight:700; color:#222; display:flex; gap:8px; align-items:center;';
+                                        const gradeSpan = document.createElement('div');
+                                        gradeSpan.textContent = String(exists.grade);
+                                        gradeSpan.style.cssText = 'font-size:1.05rem; font-weight:800;';
+                                        badge.appendChild(document.createTextNode('Nota: '));
+                                        badge.appendChild(gradeSpan);
+                                        if (exists.performanceLabel) {
+                                            const labelSpan = document.createElement('div');
+                                            labelSpan.className = 'status-chip status-graded';
+                                            labelSpan.style.cssText = 'margin-left:8px; padding:6px 8px; border-radius:6px; font-weight:600;';
+                                            labelSpan.textContent = exists.performanceLabel;
+                                            badge.appendChild(labelSpan);
+                                        }
+                                        metaEl.appendChild(badge);
+                                    }
+                                }
+                            } catch (e) { /* no bloquear si falla */ }
                         } else {
                             // si no existe: mantener comportamiento para crear; ya hay listener delegado que llama openSubmissionModal
                             btn.textContent = 'Agregar entrega';
@@ -3187,4 +3221,3 @@ async function openSubmissionModal(activity, existingSubmission = null) {
         });
     }
     // Uso ejemplo antes de inicializar editor:
-    // loadTinyMCE(TINYMCE_API_KEY).then(() => tinymce.init({...})).catch(() => { fallback to textarea });

@@ -15,6 +15,17 @@ export class EntregasService {
     @InjectModel(Entrega.name) private entregaModel: Model<Entrega>,
   ) {}
 
+  private mapGradeToLabel(grade: number | string | null | undefined): string | null {
+    if (grade === null || grade === undefined || grade === '') return null;
+    const g = typeof grade === 'string' ? parseFloat(grade) : Number(grade);
+    if (isNaN(g)) return null;
+    if (g >= 4.6 && g <= 5.0) return 'DESEMPEÑO SUPERIOR';
+    if (g >= 4.0 && g <= 4.5) return 'DESEMPEÑO ALTO';
+    if (g >= 3.0 && g <= 3.9) return 'DESEMPEÑO BÁSICO';
+    if (g >= 1.0 && g <= 2.9) return 'DESEMPEÑO BAJO';
+    return null;
+  }
+
   // Crear entrega y guardar metadatos de archivos (espera que multer haya escrito en disco)
   async createWithFiles(
     createEntregaDto: CreateEntregaDto,
@@ -147,9 +158,19 @@ export class EntregasService {
     id: string,
     updateEntregaDto: UpdateEntregaDto,
   ): Promise<Entrega | null> {
-    return this.entregaModel
-      .findByIdAndUpdate(id, updateEntregaDto, { new: true })
-      .exec();
+    try {
+      // si viene grade, calcular label antes de aplicar update
+      if ((updateEntregaDto as any).grade !== undefined) {
+        const label = this.mapGradeToLabel((updateEntregaDto as any).grade);
+        (updateEntregaDto as any).performanceLabel = label;
+      }
+      return this.entregaModel
+        .findByIdAndUpdate(id, updateEntregaDto, { new: true })
+        .exec();
+    } catch (e) {
+      this.logger.error('Error en update entregas: ' + (e?.message || e));
+      throw e;
+    }
   }
 
   // Actualizar entrega añadiendo archivos nuevos y permitiendo eliminar archivos previos
@@ -225,6 +246,14 @@ export class EntregasService {
         if (k === 'comentario') (doc as any).comment = updateDto[k];
         else (doc as any)[k] = updateDto[k];
       }
+    }
+
+    // Si se actualiza la nota (grade), calcular etiqueta de desempeño
+    if ((updateDto as any).grade !== undefined) {
+      const gradeVal = (updateDto as any).grade;
+      const label = this.mapGradeToLabel(gradeVal);
+      (doc as any).grade = (gradeVal === '' || gradeVal === null) ? undefined : (typeof gradeVal === 'string' ? parseFloat(gradeVal) : gradeVal);
+      (doc as any).performanceLabel = label;
     }
 
     // si no se proporcionó submitAt, mantener el existente
