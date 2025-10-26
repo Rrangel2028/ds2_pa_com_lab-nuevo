@@ -8,7 +8,9 @@ import { Respuesta } from './entities/respuesta.entity';
 
 @Injectable()
 export class RespuestasService {
-  constructor(@InjectModel(Respuesta.name) private respuestaModel: Model<Respuesta>) {}
+  constructor(
+    @InjectModel(Respuesta.name) private respuestaModel: Model<Respuesta>,
+  ) {}
 
   async create(createRespuestaDto: CreateRespuestaDto): Promise<Respuesta> {
     const createdRespuesta = new this.respuestaModel(createRespuestaDto);
@@ -23,11 +25,16 @@ export class RespuestasService {
     return this.respuestaModel.findById(id).exec();
   }
 
-  async update(id: string, updateRespuestaDto: UpdateRespuestaDto): Promise<Respuesta | null> {
-    return this.respuestaModel.findByIdAndUpdate(id, updateRespuestaDto, { new: true }).exec();
+  async update(
+    id: string,
+    updateRespuestaDto: UpdateRespuestaDto,
+  ): Promise<Respuesta | null> {
+    return this.respuestaModel
+      .findByIdAndUpdate(id, updateRespuestaDto, { new: true })
+      .exec();
   }
 
   async remove(id: string): Promise<Respuesta | null> {
-    return this.respuestaModel.findByIdAndDelete(id).exec()
-}
+    return this.respuestaModel.findByIdAndDelete(id).exec();
+  }
 }

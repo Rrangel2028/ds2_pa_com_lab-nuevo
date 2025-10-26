@@ -1,4 +1,3 @@
-
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCursoDto } from './dto/create-curso.dto';
 import { UpdateCursoDto } from './dto/update-curso.dto';
@@ -23,7 +22,10 @@ export class CursosService {
     return createdCurso.save();
   }
 
-  async createUnidadForCurso(cursoId: string, createUnidadeDto: CreateUnidadesDto): Promise<Unidades> {
+  async createUnidadForCurso(
+    cursoId: string,
+    createUnidadeDto: CreateUnidadesDto,
+  ): Promise<Unidades> {
     const nuevaUnidad = await this.unidadesService.create(createUnidadeDto);
     if (!nuevaUnidad) {
       throw new Error('No se pudo crear la unidad.');
@@ -43,7 +45,10 @@ export class CursosService {
     return nuevaUnidad;
   }
 
-  async deleteUnidadFromCurso(cursoId: string, unidadId: string): Promise<Curso> {
+  async deleteUnidadFromCurso(
+    cursoId: string,
+    unidadId: string,
+  ): Promise<Curso> {
     const cursoActualizado = await this.cursoModel.findByIdAndUpdate(
       cursoId,
       { $pull: { unidades: unidadId } },
@@ -60,37 +65,44 @@ export class CursosService {
   }
 
   async findAll(): Promise<Curso[]> {
-    return this.cursoModel.find()
+    return this.cursoModel
+      .find()
       .populate('inscritos')
       .populate({
         path: 'unidades',
         populate: {
           path: 'Lecciones',
           populate: {
-            path: 'Archivos'
-          }
-        }
+            path: 'Archivos',
+          },
+        },
       })
       .exec();
   }
 
   async findOne(id: string): Promise<Curso | null> {
-    return this.cursoModel.findById(id)
+    return this.cursoModel
+      .findById(id)
       .populate('inscritos')
       .populate({
         path: 'unidades',
         populate: {
           path: 'Lecciones',
           populate: {
-            path: 'Archivos'
-          }
-        }
+            path: 'Archivos',
+          },
+        },
       })
       .exec();
   }
 
-  async update(id: string, updateCursoDto: UpdateCursoDto): Promise<Curso | null> {
-    return this.cursoModel.findByIdAndUpdate(id, updateCursoDto, { new: true }).exec();
+  async update(
+    id: string,
+    updateCursoDto: UpdateCursoDto,
+  ): Promise<Curso | null> {
+    return this.cursoModel
+      .findByIdAndUpdate(id, updateCursoDto, { new: true })
+      .exec();
   }
 
   async remove(id: string): Promise<Curso | null> {
@@ -100,20 +112,24 @@ export class CursosService {
   async inscribirUsuario(cursoId: string, usuarioId: string): Promise<Curso> {
     const usuario = await this.usuarioModel.findById(usuarioId);
     if (!usuario) {
-      throw new NotFoundException(`Usuario con ID \"${usuarioId}\" no encontrado`);
+      throw new NotFoundException(
+        `Usuario con ID \"${usuarioId}\" no encontrado`,
+      );
     }
 
     await this.usuarioModel.findByIdAndUpdate(
       usuarioId,
       { $addToSet: { cursos: cursoId } },
-      { new: true }
+      { new: true },
     );
 
-    const cursoActualizado = await this.cursoModel.findByIdAndUpdate(
-      cursoId,
-      { $addToSet: { inscritos: usuarioId } },
-      { new: true }
-    ).populate('inscritos');
+    const cursoActualizado = await this.cursoModel
+      .findByIdAndUpdate(
+        cursoId,
+        { $addToSet: { inscritos: usuarioId } },
+        { new: true },
+      )
+      .populate('inscritos');
 
     if (!cursoActualizado) {
       throw new NotFoundException(`Curso con ID \"${cursoId}\" no encontrado`);
@@ -125,28 +141,32 @@ export class CursosService {
   async eliminarEstudiante(cursoId: string, usuarioId: string): Promise<Curso> {
     const curso = await this.cursoModel.findById(cursoId);
     if (!curso) {
-        throw new NotFoundException(`Curso con ID \"${cursoId}\" no encontrado`);
+      throw new NotFoundException(`Curso con ID \"${cursoId}\" no encontrado`);
     }
 
     const usuario = await this.usuarioModel.findById(usuarioId);
     if (!usuario) {
-        throw new NotFoundException(`Usuario con ID \"${usuarioId}\" no encontrado`);
+      throw new NotFoundException(
+        `Usuario con ID \"${usuarioId}\" no encontrado`,
+      );
     }
 
     await this.usuarioModel.findByIdAndUpdate(
       usuarioId,
       { $pull: { cursos: cursoId } },
-      { new: true }
+      { new: true },
     );
 
-    const cursoActualizado = await this.cursoModel.findByIdAndUpdate(
+    const cursoActualizado = await this.cursoModel
+      .findByIdAndUpdate(
         cursoId,
         { $pull: { inscritos: usuarioId } },
-        { new: true }
-    ).populate('inscritos');
+        { new: true },
+      )
+      .populate('inscritos');
 
     if (!cursoActualizado) {
-        throw new NotFoundException('No se pudo actualizar el curso.');
+      throw new NotFoundException('No se pudo actualizar el curso.');
     }
 
     return cursoActualizado;

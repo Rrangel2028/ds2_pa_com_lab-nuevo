@@ -1,5 +1,16 @@
 // src/Cursos/cursos.controller.ts
-import { Controller, Get, Post, Body, Patch, Param, Delete, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UsePipes,
+  ValidationPipe,
+  UseGuards,
+} from '@nestjs/common';
 import { CursosService } from './cursos.service';
 import { CreateCursoDto } from './dto/create-curso.dto';
 import { UpdateCursoDto } from './dto/update-curso.dto';
@@ -27,7 +38,7 @@ export class CursosController {
   findAll() {
     return this.cursosService.findAll();
   }
-    
+
   @Post(':id/unidades')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.ADMIN)
@@ -54,15 +65,27 @@ export class CursosController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.ADMIN)
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-  inscribirUsuario(@Param('cursoId') cursoId: string, @Body() inscribirUsuarioDto: InscribirUsuarioDto) {
-    return this.cursosService.inscribirUsuario(cursoId, inscribirUsuarioDto.usuarioId);
+  inscribirUsuario(
+    @Param('cursoId') cursoId: string,
+    @Body() inscribirUsuarioDto: InscribirUsuarioDto,
+  ) {
+    return this.cursosService.inscribirUsuario(
+      cursoId,
+      inscribirUsuarioDto.usuarioId,
+    );
   }
 
   @Post(':cursoId/eliminar-estudiante')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.ADMIN)
-  eliminarEstudiante(@Param('cursoId') cursoId: string, @Body() inscribirUsuarioDto: InscribirUsuarioDto) {
-    return this.cursosService.eliminarEstudiante(cursoId, inscribirUsuarioDto.usuarioId);
+  eliminarEstudiante(
+    @Param('cursoId') cursoId: string,
+    @Body() inscribirUsuarioDto: InscribirUsuarioDto,
+  ) {
+    return this.cursosService.eliminarEstudiante(
+      cursoId,
+      inscribirUsuarioDto.usuarioId,
+    );
   }
 
   @Get(':id')

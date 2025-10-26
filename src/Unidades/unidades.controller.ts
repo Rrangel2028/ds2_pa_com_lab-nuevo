@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { UnidadesService } from './unidades.service';
 import { CreateUnidadesDto } from './dto/create-unidade.dto';
 import { UpdateUnidadesDto } from './dto/update-unidade.dto';
@@ -41,12 +50,12 @@ export class UnidadesController {
   }
 
   @Get(':id/Contenidos')
-    findUnidadesContenido (@Param('id') id: string) {
-      return this.unidadesService.findUnidadesContenido(id);
+  findUnidadesContenido(@Param('id') id: string) {
+    return this.unidadesService.findUnidadesContenido(id);
   }
 
   @Get(':id/Lecciones')
-    findUnidadesLecciones (@Param('id') id: string) {
-      return this.unidadesService.findUnidadesLecciones(id);
+  findUnidadesLecciones(@Param('id') id: string) {
+    return this.unidadesService.findUnidadesLecciones(id);
   }
 }

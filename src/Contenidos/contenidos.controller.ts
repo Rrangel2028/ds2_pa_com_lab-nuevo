@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { ContenidosService } from './contenidos.service';
 import { CreateContenidosDto } from './dto/create-contenido.dto';
 import { UpdateContenidosDto } from './dto/update-contenido.dto';
@@ -23,7 +31,10 @@ export class ContenidosController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateContenidoDto: UpdateContenidosDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateContenidoDto: UpdateContenidosDto,
+  ) {
     return this.contenidosService.update(id, updateContenidoDto);
   }
 
@@ -33,7 +44,7 @@ export class ContenidosController {
   }
 
   @Get(':id/Unidades')
-    findContenidosUnidades (@Param('id') id: string) {
-      return this.contenidosService.findContenidosUnidades(id);
+  findContenidosUnidades(@Param('id') id: string) {
+    return this.contenidosService.findContenidosUnidades(id);
   }
 }

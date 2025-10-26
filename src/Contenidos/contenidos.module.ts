@@ -5,8 +5,10 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ContenidoSchema } from './schemas/contenidos.schema';
 
 @Module({
-  imports :[
-  MongooseModule.forFeature([{ name: 'Contenidos', schema: ContenidoSchema }])
+  imports: [
+    MongooseModule.forFeature([
+      { name: 'Contenidos', schema: ContenidoSchema },
+    ]),
   ],
   controllers: [ContenidosController],
   providers: [ContenidosService],

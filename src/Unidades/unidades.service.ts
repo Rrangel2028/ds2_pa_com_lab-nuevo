@@ -24,21 +24,30 @@ export class UnidadesService {
   }
 
   async findAll(): Promise<Unidades[]> {
-    return this.unidadeModel.find().populate('Contenidos').populate('Lecciones').exec();
+    return this.unidadeModel
+      .find()
+      .populate('Contenidos')
+      .populate('Lecciones')
+      .exec();
   }
 
   async findOne(id: string): Promise<Unidades | null> {
-    return this.unidadeModel.findById(id).populate('Contenidos').populate('Lecciones').exec();
+    return this.unidadeModel
+      .findById(id)
+      .populate('Contenidos')
+      .populate('Lecciones')
+      .exec();
   }
 
   async findUnidadesContenido(id: string): Promise<any> {
-    const unidad = await this.unidadeModel.findById(id)
+    const unidad = await this.unidadeModel
+      .findById(id)
       .populate({
         path: 'Contenidos',
         populate: {
           path: 'archivo',
-          model: 'Archivo'
-        }
+          model: 'Archivo',
+        },
       })
       .populate('Lecciones')
       .exec();
@@ -47,12 +56,14 @@ export class UnidadesService {
       throw new NotFoundException(`Unidad con ID "${id}" no encontrada`);
     }
 
-    const archivos = unidad.Contenidos.filter(c => c.archivo).map((c: any) => ({
-      _id: c.archivo._id,
-      name: c.archivo.name,
-      url: c.archivo.route,
-      description: c.description,
-    }));
+    const archivos = unidad.Contenidos.filter((c) => c.archivo).map(
+      (c: any) => ({
+        _id: c.archivo._id,
+        name: c.archivo.name,
+        url: c.archivo.route,
+        description: c.description,
+      }),
+    );
 
     const lecciones = unidad.Lecciones || [];
 
@@ -73,10 +84,10 @@ export class UnidadesService {
       archivos: (a.archivos || []).map((f: any) => ({
         _id: f._id,
         name: f.name,
-        url: f.route
+        url: f.route,
       })),
       createdAt: a.createdAt,
-      updatedAt: a.updatedAt
+      updatedAt: a.updatedAt,
     }));
 
     return { archivos, lecciones, actividades };
@@ -85,9 +96,14 @@ export class UnidadesService {
   async findUnidadesLecciones(Id: string): Promise<Unidades | null> {
     return this.unidadeModel.findById(Id).populate('Lecciones').exec();
   }
-  
-  async update(id: string, updateUnidadeDto: UpdateUnidadesDto): Promise<Unidades | null> {
-    return this.unidadeModel.findByIdAndUpdate(id, updateUnidadeDto, { new: true }).exec();
+
+  async update(
+    id: string,
+    updateUnidadeDto: UpdateUnidadesDto,
+  ): Promise<Unidades | null> {
+    return this.unidadeModel
+      .findByIdAndUpdate(id, updateUnidadeDto, { new: true })
+      .exec();
   }
 
   async remove(id: string): Promise<Unidades | null> {

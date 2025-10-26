@@ -20,6 +20,9 @@ export class Entrega extends Document {
   @Prop() delivery_date?: string;
   @Prop() hour?: string;
   @Prop() comment?: string;
+  @Prop() grade?: number;
+  @Prop() teacherComment?: string;
+  @Prop() performanceLabel?: string;
 
   @Prop([{ type: Types.ObjectId, ref: 'Usuario' }])
   usuarios?: Usuario[];

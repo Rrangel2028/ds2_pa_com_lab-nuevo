@@ -10,9 +10,9 @@ import { UnidadesModule } from '../Unidades/unidades.module';
   imports: [
     MongooseModule.forFeature([
       { name: Curso.name, schema: CursoSchema },
-      { name: Usuario.name, schema: UsuarioSchema } 
+      { name: Usuario.name, schema: UsuarioSchema },
     ]),
-    UnidadesModule
+    UnidadesModule,
   ],
   controllers: [CursosController],
   providers: [CursosService],

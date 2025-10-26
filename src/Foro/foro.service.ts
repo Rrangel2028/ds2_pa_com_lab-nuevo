@@ -24,10 +24,12 @@ export class ForoService {
   }
 
   async update(id: string, updateForoDto: UpdateForoDto): Promise<Foro | null> {
-    return this.foroModel.findByIdAndUpdate(id, updateForoDto, { new: true }).exec();
+    return this.foroModel
+      .findByIdAndUpdate(id, updateForoDto, { new: true })
+      .exec();
   }
 
   async remove(id: string): Promise<Foro | null> {
-    return this.foroModel.findByIdAndDelete(id).exec()
-}
+    return this.foroModel.findByIdAndDelete(id).exec();
+  }
 }

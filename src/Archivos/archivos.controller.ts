@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ArchivosService } from './archivos.service';
 import { CreateArchivoDto } from './dto/create-archivo.dto';
@@ -9,11 +20,17 @@ export class ArchivosController {
   constructor(private readonly archivosService: ArchivosService) {}
 
   // La ruta de creación ahora es POST /archivos/unidades/:idUnidad
-  @Post('unidades/:idUnidad') 
+  @Post('unidades/:idUnidad')
   @UseInterceptors(FileInterceptor('file'))
-  create(@Param('idUnidad') idUnidad: string, @UploadedFile() file: Express.Multer.File, @Body() createArchivoDto: CreateArchivoDto) {
+  create(
+    @Param('idUnidad') idUnidad: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() createArchivoDto: CreateArchivoDto,
+  ) {
     if (!file) {
-      throw new BadRequestException('No se ha incluido ningún archivo en la solicitud.');
+      throw new BadRequestException(
+        'No se ha incluido ningún archivo en la solicitud.',
+      );
     }
     return this.archivosService.create(idUnidad, createArchivoDto, file);
   }
@@ -47,10 +64,10 @@ export class ArchivosController {
   @Get(':id/actividades')
   findArchivosActividad(@Param('id') id: string) {
     return this.archivosService.findArchivosActividad(id);
-  } 
+  }
 
   @Get(':id/lecciones')
-    findArchivosLecciones (@Param('id') id: string) {
-      return this.archivosService.findArchivosLecciones(id);
+  findArchivosLecciones(@Param('id') id: string) {
+    return this.archivosService.findArchivosLecciones(id);
   }
 }

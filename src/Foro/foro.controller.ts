@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { ForoService } from './foro.service';
 import { CreateForoDto } from './dto/create-foro.dto';
 import { UpdateForoDto } from './dto/update-foro.dto';

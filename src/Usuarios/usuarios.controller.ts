@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
@@ -35,7 +43,7 @@ export class UsuariosController {
   @Get(':id/cursos')
   findUserCursos(@Param('id') id: string) {
     return this.usuariosService.findUserCursos(id);
-}
+  }
 
   @Get(':id/entregas')
   findUserEntregas(@Param('id') id: string) {

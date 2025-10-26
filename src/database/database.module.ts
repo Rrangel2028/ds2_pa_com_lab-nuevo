@@ -4,7 +4,10 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Curso, CursoSchema } from '../Cursos/schemas/cursos.schema';
 import { Usuario, UsuarioSchema } from '../Usuarios/schemas/usuarios.schema';
 import { Unidades, UnidadeSchema } from '../Unidades/schemas/unidades.schema';
-import { Contenidos, ContenidoSchema } from '../Contenidos/schemas/contenidos.schema';
+import {
+  Contenidos,
+  ContenidoSchema,
+} from '../Contenidos/schemas/contenidos.schema';
 import { Archivo, ArchivoSchema } from '../Archivos/schemas/archivos.schema';
 
 const MODELS = [
@@ -23,7 +26,7 @@ const MODELS = [
       imports: [ConfigModule], // Importamos ConfigModule para poder inyectar ConfigService
       useFactory: async (configService: ConfigService) => ({
         // Corregimos el nombre de la variable de entorno
-        uri: configService.get<string>('DATABASE_URL'), 
+        uri: configService.get<string>('DATABASE_URL'),
       }),
       inject: [ConfigService],
     }),
