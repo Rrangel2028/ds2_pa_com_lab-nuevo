@@ -995,6 +995,27 @@ async function openSubmissionModal(activity, existingSubmission = null) {
             const btnSend = containerEl.querySelector('#submit-delivery-btn-inline');
             const msgEl = containerEl.querySelector('#submission-inline-msg');
 
+            // Si la entrega ya fue calificada, ocultar/deshabilitar controles de edición
+            try {
+                if (existingSubmission && existingSubmission.grade !== undefined && existingSubmission.grade !== null) {
+                    // ocultar/inhabilitar el botón de envío/actualización
+                    try { btnSend.disabled = true; } catch (e) {}
+                    try { btnSend.style.display = 'none'; } catch (e) {}
+
+                    // ocultar/inhabilitar elección de archivos
+                    try { chooseBtn.disabled = true; } catch (e) {}
+                    try { chooseBtn.style.display = 'none'; } catch (e) {}
+                    try { fileInputHidden.disabled = true; } catch (e) {}
+
+                    // mostrar mensaje informativo al estudiante
+                    try {
+                        msgEl.textContent = 'Esta entrega ya fue calificada por el docente y no puede ser editada.';
+                        msgEl.style.display = 'block';
+                        msgEl.style.color = '#155724';
+                    } catch (e) {}
+                }
+            } catch (e) { /* non-fatal */ }
+
             let selectedFilesInline = [];
             // archivos marcados para eliminar (puede contener object ids o names)
             let filesToRemove = [];
@@ -2617,22 +2638,35 @@ async function openSubmissionModal(activity, existingSubmission = null) {
                                 if (exists.grade !== undefined && exists.grade !== null) {
                                     const metaEl = el.querySelector('.actividad-meta');
                                     if (metaEl) {
-                                        const badge = document.createElement('div');
-                                        badge.className = 'student-grade-badge';
-                                        badge.style.cssText = 'margin-top:8px; font-weight:700; color:#222; display:flex; gap:8px; align-items:center;';
-                                        const gradeSpan = document.createElement('div');
-                                        gradeSpan.textContent = String(exists.grade);
-                                        gradeSpan.style.cssText = 'font-size:1.05rem; font-weight:800;';
-                                        badge.appendChild(document.createTextNode('Nota: '));
-                                        badge.appendChild(gradeSpan);
-                                        if (exists.performanceLabel) {
-                                            const labelSpan = document.createElement('div');
-                                            labelSpan.className = 'status-chip status-graded';
-                                            labelSpan.style.cssText = 'margin-left:8px; padding:6px 8px; border-radius:6px; font-weight:600;';
-                                            labelSpan.textContent = exists.performanceLabel;
-                                            badge.appendChild(labelSpan);
-                                        }
-                                        metaEl.appendChild(badge);
+                                        // En lugar de mostrar la nota directamente, añadimos un botón "Ver nota" que abre un modal
+                                        const viewBtn = document.createElement('button');
+                                        viewBtn.className = 'btn btn-secondary btn-view-grade';
+                                        viewBtn.type = 'button';
+                                        viewBtn.textContent = 'Ver nota';
+                                        viewBtn.style.cssText = 'margin-top:8px; padding:8px 12px; border-radius:8px; cursor:pointer;';
+                                        viewBtn.addEventListener('click', (ev) => {
+                                            ev.preventDefault();
+                                            try { openStudentSubmissionModal(exists); } catch (e) { console.error('Abrir modal ver nota falló', e); }
+                                        });
+
+                                        // Intentar colocar el botón en la misma posición donde estaba 'Agregar/Editar entrega'
+                                        try {
+                                            const actionsContainer = el.querySelector('.resource-item-actions');
+                                            const actionsInner = actionsContainer ? actionsContainer.querySelector('div') : null;
+                                            if (btn && btn.parentNode) {
+                                                // reemplazar el botón de agregar/editar por el botón 'Ver nota'
+                                                btn.parentNode.replaceChild(viewBtn, btn);
+                                            } else if (actionsInner) {
+                                                actionsInner.appendChild(viewBtn);
+                                            } else {
+                                                // fallback: añadir en meta
+                                                metaEl.appendChild(viewBtn);
+                                            }
+
+                                            // Si la entrega ya fue calificada, ocultar solo el contador (no quitar el botón)
+                                            const countdownEl = el.querySelector('.actividad-countdown');
+                                            if (countdownEl) countdownEl.style.display = 'none';
+                                        } catch (hideErr) { /* non-fatal */ }
                                     }
                                 }
                             } catch (e) { /* no bloquear si falla */ }
@@ -2785,6 +2819,104 @@ async function openSubmissionModal(activity, existingSubmission = null) {
         const interval = setInterval(tick, 1000);
         return interval;
     }
+
+        // Modal para que el estudiante vea su entrega (nota, archivos, comentarios)
+        function openStudentSubmissionModal(submission) {
+            try {
+                if (!submission) return showMessage('Datos de la entrega no disponibles.', true);
+                let modal = document.getElementById('student-submission-modal');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'student-submission-modal';
+                    modal.style.position = 'fixed';
+                    modal.style.left = '0';
+                    modal.style.top = '0';
+                    modal.style.width = '100%';
+                    modal.style.height = '100%';
+                    modal.style.zIndex = '1500';
+                    modal.style.display = 'none';
+                    modal.style.alignItems = 'center';
+                    modal.style.justifyContent = 'center';
+                    modal.style.background = 'rgba(0,0,0,0.45)';
+
+                    modal.innerHTML = `
+                        <div id="student-submission-card" style="background:#fff; max-width:920px; width:95%; max-height:85vh; overflow:auto; border-radius:8px; padding:18px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <h3 style="margin:0;">Estado de la entrega</h3>
+                                <button id="student-submission-close" aria-label="Cerrar" style="background:#fff;border:0;font-size:1.6rem;cursor:pointer;">&times;</button>
+                            </div>
+                            <div id="student-submission-body">Cargando...</div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+
+                    modal.addEventListener('click', (ev) => { if (ev.target === modal) modal.style.display = 'none'; });
+                    modal.querySelector('#student-submission-close').addEventListener('click', () => modal.style.display = 'none');
+                }
+
+                // Construir contenido de la tabla con acento según performanceLabel y enlaces a nuevo endpoint de descarga
+                const body = modal.querySelector('#student-submission-body');
+                const files = submission.files || submission.archivos || [];
+                const hasFiles = Array.isArray(files) && files.length > 0;
+                const estadoEntrega = (hasFiles || submission.submitAt) ? 'Enviada' : 'Todavía no se han realizado envíos';
+                const estadoCalif = (submission.grade !== undefined && submission.grade !== null) ? 'Calificado' : 'Sin calificar';
+                const lastMod = submission.updatedAt || submission.submitAt || '-';
+
+                // Mapear performanceLabel a clase corta
+                const perfMap = {
+                    'DESEMPEÑO SUPERIOR': 'superior',
+                    'DESEMPEÑO ALTO': 'alto',
+                    'DESEMPEÑO BÁSICO': 'basico',
+                    'DESEMPEÑO BAJO': 'bajo'
+                };
+                const perfKey = (submission.performanceLabel && perfMap[submission.performanceLabel]) ? perfMap[submission.performanceLabel] : null;
+                const perfClass = perfKey ? `submission-row-accent-${perfKey}` : '';
+
+                // Construir lista de archivos: usar endpoint de descarga si existe _id, si no, fallback a url/path
+                let archivosHtml = '-';
+                if (hasFiles) {
+                    archivosHtml = '<ul class="submission-file-list">';
+                    files.forEach((f) => {
+                        const url = f.url || f.path || f.fileUrl || f.route || '';
+                        const name = f.originalname || f.originalName || f.name || f.filename || (url ? String(url).split('/').pop() : 'archivo');
+                        let href = '#';
+                        // Preferir el endpoint seguro de descarga si existe el id del archivo y el id de la entrega
+                        try {
+                            if (f._id && submission._id) {
+                                href = `/entregas/${submission._id}/archivos/${f._id}/download`;
+                            } else if (url) {
+                                href = String(url).startsWith('http') ? String(url) : (window.location.origin + (String(url).startsWith('/') ? url : '/' + url));
+                            }
+                        } catch (e) { href = '#'; }
+
+                        archivosHtml += `<li><a class="resource-file-link" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer"><i class="fas fa-file"></i>${escapeHtml(name)}</a></li>`;
+                    });
+                    archivosHtml += '</ul>';
+                }
+
+                const gradeHtml = (submission.grade !== undefined && submission.grade !== null) ? `<strong>${escapeHtml(String(submission.grade))}</strong>` : '-';
+                const teacherCommentHtml = submission.teacherComment ? `<div class="submission-teacher-comment">${escapeHtml(submission.teacherComment)}</div>` : '-';
+
+                body.innerHTML = `
+                    <table class="submission-table ${perfClass}">
+                        <tbody>
+                            <tr><td class="submission-key">Estado de la entrega</td><td class="submission-value">${escapeHtml(estadoEntrega)}</td></tr>
+                            <tr><td class="submission-key">Estado de la calificación</td><td class="submission-value">${escapeHtml(estadoCalif)}</td></tr>
+                            <tr><td class="submission-key">Última modificación</td><td class="submission-value">${escapeHtml(lastMod ? (new Date(lastMod).toLocaleString() || lastMod) : '-')}</td></tr>
+                            <tr><td class="submission-key">Archivos de la entrega</td><td class="submission-value">${archivosHtml}</td></tr>
+                            <tr><td class="submission-key">Nota</td><td class="submission-value">${gradeHtml}</td></tr>
+                            <tr><td class="submission-key">Comentarios del docente</td><td class="submission-value">${teacherCommentHtml}</td></tr>
+                        </tbody>
+                    </table>
+                `;
+
+                modal.style.display = 'flex';
+                const card = document.getElementById('student-submission-card'); if (card) card.scrollTop = 0;
+            } catch (err) {
+                console.error('openStudentSubmissionModal error:', err);
+                showMessage('No se pudo mostrar la información de la entrega.', true);
+            }
+        }
 
         // Reemplaza la función openViewSubmissionsModal por esta versión que renderiza una tabla
         async function openViewSubmissionsModal(activityId) {

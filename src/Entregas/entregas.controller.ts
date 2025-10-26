@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   UploadedFiles,
   Req,
+  Res,
   HttpCode,
   Logger,
   HttpException,
@@ -173,6 +174,38 @@ export class EntregasController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.entregasService.findOne(id);
+  }
+
+  // Descargar un archivo asociado a una entrega
+  @Get(':id/archivos/:fileId/download')
+  async downloadEntregaFile(@Param('id') id: string, @Param('fileId') fileId: string, @Res() res: any) {
+    try {
+      const entrega = await this.entregasService.findOne(id);
+      if (!entrega) {
+        throw new HttpException('Entrega no encontrada', HttpStatus.NOT_FOUND);
+      }
+
+      const archivos = (entrega as any).archivos || [];
+      // Buscar por _id, filename o originalname
+      const fileEntry = archivos.find((a: any) => String(a._id) === String(fileId) || a.filename === fileId || a.originalname === fileId);
+      if (!fileEntry) {
+        throw new HttpException('Archivo no encontrado en la entrega', HttpStatus.NOT_FOUND);
+      }
+
+      const possiblePath = fileEntry.path || (fileEntry.filename ? (join(process.cwd(), 'uploads', 'entregas', fileEntry.filename)) : null);
+      if (!possiblePath || !fs.existsSync(possiblePath)) {
+        throw new HttpException('Archivo físico no encontrado en el servidor', HttpStatus.NOT_FOUND);
+      }
+
+      // Forzar descarga y nombre original
+      const suggestedName = fileEntry.originalname || fileEntry.filename || 'archivo';
+      res.setHeader('Content-Disposition', `attachment; filename="${suggestedName.replace(/\"/g, '')}"`);
+      return res.sendFile(possiblePath);
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      this.logger.error('Error descargando archivo de entrega: ' + (err?.message || err));
+      throw new HttpException({ message: 'Error descargando archivo' }, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 
   @Patch(':id')

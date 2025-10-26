@@ -16,6 +16,124 @@
   --radius: 14px;
 }
 
+/* ------- UI TUNING: más aire, tipografía más clara y menos peso visual ------- */
+html, body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+
+/* Ajustes globales de escala para evitar textos demasiado grandes en tarjetas */
+body { font-size: 15px; }
+
+/* Recursos: tarjetas menos 'llenas' */
+.resource-item-list {
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(250,250,250,0.98));
+    border: 1px solid rgba(30,41,59,0.04);
+    box-shadow: 0 6px 18px rgba(15,23,42,0.03);
+}
+
+.resource-item-main { gap: 14px; }
+.resource-left { width:56px; display:flex; align-items:center; justify-content:center; }
+.resource-body { padding-right:8px; }
+
+/* Actividad: título y meta alineados en una sola línea cuando haya espacio */
+.actividad-title, .resource-name { font-weight:700; color:var(--ink); font-size:1rem; }
+.actividad-meta { display:flex; gap:10px; align-items:center; justify-content:flex-start; margin-top:8px; }
+
+/* Badge de nota: más discreto y con sombra sutil */
+.student-grade-badge{
+    background: #fff;
+    border:1px solid rgba(15,23,42,0.04);
+    padding:6px 10px;
+    border-radius:999px;
+    display:inline-flex; align-items:center; gap:10px;
+    font-weight:700; font-size:0.95rem;
+    box-shadow: 0 6px 16px rgba(12,18,35,0.04);
+}
+.student-grade-badge .grade-value{ color: #0b1220; font-weight:800; }
+
+/* Alinear y estilizar el botón 'Ver nota' dentro de la tarjeta de actividad */
+.actividad-meta { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.btn-view-grade { background:#f8fafc; border:1px solid #e6eef8; color:#0f172a; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600; }
+.btn-view-grade:hover { background:#eef2ff; border-color:#c7d2fe; }
+
+/* Estilos para el modal de 'Ver nota' (tabla más visual) */
+#student-submission-card { border-radius:10px; box-shadow: 0 14px 40px rgba(2,6,23,0.08); border:1px solid #e6eef8; overflow:hidden; }
+#student-submission-card h3 { margin:0; }
+#student-submission-card table { width:100%; border-collapse:separate; border-spacing:0 8px; font-family:inherit; }
+#student-submission-card tbody tr { background:#fff; border-radius:8px; display:table; width:100%; table-layout:fixed; box-shadow: 0 6px 18px rgba(15,23,42,0.03); }
+#student-submission-card tbody tr td { padding:12px 14px; vertical-align:middle; }
+#student-submission-card tbody tr td:first-child { background:linear-gradient(90deg,#f8fafc,#ffffff); font-weight:700; width:220px; }
+#student-submission-card tbody tr:hover { transform:translateY(-2px); transition:transform 120ms ease; background:linear-gradient(90deg,#fbfdff,#f1f5ff);} 
+
+/* En pantallas pequeñas apilar celdas pero mantener estilo */
+@media (max-width:900px) {
+    #student-submission-card table { border-spacing:0; }
+    #student-submission-card tbody tr { display:block; margin-bottom:10px; }
+    #student-submission-card tbody tr td { display:block; width:100%; }
+    #student-submission-card tbody tr td:first-child { width:100%; }
+}
+
+/* Resalte para estado calificado */
+.submission-status-calificado { color:#0f172a; background:#ecfeff; padding:6px 10px; border-radius:8px; font-weight:700; display:inline-block; }
+
+/* Table specific styles for the submission modal */
+.submission-table { width:100%; border-collapse:separate; border-spacing:0; }
+.submission-table tbody { width:100%; }
+.submission-table tbody tr { display:table; width:100%; table-layout:fixed; border-radius:10px; background:transparent; box-shadow:none; transition:transform .12s ease, box-shadow .12s ease; }
+.submission-table tbody tr + tr { margin-top:8px; }
+.submission-key { width:260px; padding:14px; background:linear-gradient(90deg,#fbfdff,#f8fafc); font-weight:700; color:#0f172a; border-left:6px solid rgba(59,130,246,0.06); }
+.submission-value { padding:14px; background:#fff; color:#0b1220; border:1px solid rgba(15,23,42,0.03); border-left:0; border-radius:6px; }
+.submission-table tbody tr:hover { transform:translateY(-3px); box-shadow:0 10px 30px rgba(2,6,23,0.07); }
+.submission-file-list { margin:6px 0 0 0; padding-left:0; list-style:none; display:flex; flex-direction:column; gap:8px; }
+.submission-file-list li { margin:0; }
+.resource-file-link { color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; border:1px solid rgba(17,24,39,0.04); background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,255,0.98)); }
+.resource-file-link:hover { background: linear-gradient(180deg,#fff9f9,#fff); box-shadow: 0 6px 18px rgba(17,24,39,0.04); transform:translateY(-1px); }
+.resource-file-link i { font-size:0.95rem; color: rgba(17,24,39,0.6); }
+.submission-teacher-comment { white-space:pre-wrap; color:#102a43; padding:8px; background:#fbfdff; border-left:4px solid rgba(14,165,233,0.06); border-radius:6px; }
+
+/* Accent colored left border depending on performance label (aplicar clase en JS si se quiere) */
+.submission-row-accent-superior .submission-key { border-left-color: #16a34a; }
+.submission-row-accent-alto .submission-key { border-left-color: #059669; }
+.submission-row-accent-basico .submission-key { border-left-color: #0ea5e9; }
+.submission-row-accent-bajo .submission-key { border-left-color: #ef4444; }
+
+/* Slight card look for each row to match earlier styles */
+#student-submission-card tbody tr { background:#fff; box-shadow: 0 6px 18px rgba(15,23,42,0.03); margin-bottom:8px; }
+#student-submission-card tbody tr td { border-radius:6px; }
+
+/* Chips más compactos, mayúsculas y con menos saturación */
+.status-chip{ font-size:0.78rem; padding:4px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:0.6px; font-weight:700; }
+.status-graded{ background:#eef2ff; color:#1f3aa6; }
+.status-pending{ background:#fffaf0; color:#7b4b00; }
+.status-superior{ background:#e8fff1; color:#07532b; }
+.status-alto{ background:#ecfdf6; color:#065a3f; }
+.status-basico{ background:#eef2ff; color:#1e3a8a; }
+.status-bajo{ background:#fff1f2; color:#7f1d1d; }
+
+/* Tabla y modal: respiración y tipografía coherente */
+#view-submissions-card, #activity-detail-card { border-radius:12px; padding:16px; }
+#view-submissions-list table thead th { font-size:0.92rem; font-weight:700; color:#1f2937; }
+#view-submissions-list tbody td, #activity-detail-body td { font-size:0.95rem; color:#263245; }
+
+/* Lección: texto más legible y menos contraste en borde */
+.leccion-preview { padding:16px 18px; border-radius:12px; border:1px solid rgba(30,136,229,0.08); background:#fff; }
+.leccion-preview-title{ font-size:1rem; font-weight:700; }
+.leccion-preview-body{ font-size:0.96rem; line-height:1.55; color:#2b3440; }
+
+/* Botones: menos pesados, más consistentes */
+.btn { border-radius:10px; padding:8px 12px; font-size:0.95rem; font-weight:700; }
+.btn-primary { background: linear-gradient(90deg, #ff6b6b, #e85a5a); box-shadow:none; }
+.btn-secondary { background:#f7f8fb; border:1px solid rgba(15,23,42,0.04); }
+
+/* Dispositivos pequeños: apilar y aumentar espaciado ligeramente */
+@media (max-width:720px){
+    .resource-item-list { padding:12px; }
+    .actividad-meta { flex-direction:column; align-items:flex-start; gap:6px; }
+    .student-grade-badge{ width:100%; justify-content:flex-start; }
+}
+
+
 /* --------- Reset y Estilos Base --------- */
 *{
   box-sizing: border-box;
