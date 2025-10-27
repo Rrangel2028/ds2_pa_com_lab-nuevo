@@ -150,8 +150,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 </a>
                 ${adminActions}
             `;
+            // If course already provides an image URL, use it; otherwise generate one based on the name
+            try {
+                const imagenUrl = curso.imagen || getImageForCourse(curso, index);
+                card.classList.add('card-style-image');
+                card.style.backgroundImage = `url('${imagenUrl}')`;
+            } catch (e) {
+                // ignore and render without background
+                console.warn('No se pudo asignar imagen al curso', e);
+            }
+
             grid.appendChild(card);
         });
+    }
+
+    // Helper: choose an image URL based on course name (client-side fallback)
+    // For production it's better to have `curso.imagen` in the API; this is a quick client-side approach.
+    function getImageForCourse(curso, index) {
+        const name = (curso.nombre || '').toLowerCase();
+        let query = 'photography';
+        if (name.includes('foto') || name.includes('photograph') || name.includes('camera')) {
+            query = 'photography,camera';
+        } else if (name.includes('edici') || name.includes('edit')) {
+            query = 'photo editing,computer';
+        } else if (name.includes('dise') || name.includes('design')) {
+            query = 'design,art';
+        } else if (name.includes('video') || name.includes('film')) {
+            query = 'video,filmmaking';
+        } else {
+            // default to photography-related imagery
+            query = 'photography,landscape';
+        }
+        // Use Unsplash Source to get a random image for the query. We add index as sig to vary images.
+        // Note: this is a simple client-side approach and may produce different images on each load.
+        return `https://source.unsplash.com/1600x900/?${encodeURIComponent(query)}&sig=${index}`;
     }
 
     // --- MANEJADORES DE EVENTOS ---
