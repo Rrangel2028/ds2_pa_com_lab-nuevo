@@ -217,6 +217,21 @@ body{
     margin: 0;
 }
 
+/* Per-letter wave title animation (slow, subtle) */
+.boosters-title.wave-text { display: inline-block; letter-spacing: .6px; }
+.boosters-title.wave-text .wave-letter { display: inline-block; transform: translateY(0); animation: wave 3.2s ease-in-out infinite; }
+.boosters-title.wave-text .wave-letter.space { display:inline-block; width:0.45rem; }
+
+@keyframes wave {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-8px); }
+  60% { transform: translateY(2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boosters-title.wave-text .wave-letter { animation: none; }
+}
+
 #add-course-btn {
     position: absolute;
     right: 0;

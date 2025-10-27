@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutButton = document.getElementById('logout-button');
     const addCourseBtn = document.getElementById('add-course-btn');
     const grid = document.querySelector('.subject-cards-grid');
+    const boostersTitle = document.querySelector('.boosters-title');
     
     // Vistas y Modales de Curso
     const courseModal = document.getElementById('course-modal');
@@ -69,6 +70,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let cursosCache = [];
 
     // --- FUNCIONES PRINCIPALES ---
+
+    // Wrap title characters in spans to enable per-letter wave animation
+    function initWaveTitle() {
+        if (!boostersTitle) return;
+        const text = boostersTitle.textContent.trim();
+        boostersTitle.innerHTML = '';
+        const frag = document.createDocumentFragment();
+        Array.from(text).forEach((ch, i) => {
+            const span = document.createElement('span');
+            const isSpace = ch === ' ';
+            span.className = 'wave-letter' + (isSpace ? ' space' : '');
+            span.textContent = isSpace ? '\u00A0' : ch;
+            span.style.animationDelay = `${(i * 0.06).toFixed(2)}s`;
+            frag.appendChild(span);
+        });
+        boostersTitle.appendChild(frag);
+        boostersTitle.classList.add('wave-text');
+    }
 
     function displayWelcomeMessage() {
         if (!currentUserEmail || !welcomeMessageContainer) return;
@@ -335,6 +354,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- SECUENCIA DE INICIALIZACIÓN ---
+    // initialize title animation (per-letter wave)
+    try { initWaveTitle(); } catch (e) { /* ignore if fails */ }
     displayWelcomeMessage();
     setupAdminControls();
     cargarCursos();
