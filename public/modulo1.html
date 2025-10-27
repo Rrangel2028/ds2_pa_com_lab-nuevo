@@ -253,8 +253,10 @@
                 <div id="units-list-container"></div>
                 <button
                   id="add-unit-btn"
-                  class="btn btn-secondary btn-full-width"
-                >
+                  class="btn btn-primary btn-full-width"
+                  aria-label="Añadir nueva unidad">
+                  <i class="fas fa-plus" style="margin-right:8px"></i>
+                  Añadir Nueva Unidad
                 </button>
               </nav>
 
@@ -374,5 +376,42 @@
   <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/langs/es.js"></script>
   <script src="modulo.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+  <!-- Script: asegurar que la barra lateral se comporte en el flujo normal (scroll junto a la página) -->
+  <script>
+    (function () {
+      const navId = 'course-index-sidebar';
+      let raf = null;
+
+      function ensureStatic() {
+        const nav = document.getElementById(navId);
+        if (!nav) return;
+        try {
+          // Forzamos posición en flujo normal y eliminamos estilos inline que la fijen
+          nav.style.setProperty('position', 'static', 'important');
+          nav.style.removeProperty('top');
+          nav.style.removeProperty('left');
+          nav.style.removeProperty('right');
+          nav.style.removeProperty('transform');
+        } catch (e) {
+          // safe fallback
+          nav.style.position = 'static';
+        }
+      }
+
+      function onScrollThrottled() {
+        if (raf) return;
+        raf = requestAnimationFrame(() => {
+          ensureStatic();
+          raf = null;
+        });
+      }
+
+      document.addEventListener('DOMContentLoaded', ensureStatic);
+      window.addEventListener('load', ensureStatic);
+      window.addEventListener('scroll', onScrollThrottled, { passive: true });
+      // run once after a short delay in case other scripts run after load
+      setTimeout(ensureStatic, 500);
+    })();
+  </script>
 </body>
 </html>

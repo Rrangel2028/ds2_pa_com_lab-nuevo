@@ -1157,3 +1157,16 @@ body{
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Debug override: asegurar que la barra lateral se comporte en el flujo normal
+     (se desplaza con la página). Estas reglas usan !important para vencer
+     cualquier estilo previo mientras verificamos el comportamiento. */
+.course-index-sidebar {
+    position: static !important;
+    margin-left: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+.course-content-area {
+    margin-left: 0 !important;
+}
