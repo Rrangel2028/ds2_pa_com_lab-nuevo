@@ -413,5 +413,60 @@
       setTimeout(ensureStatic, 500);
     })();
   </script>
+  <!-- Init per-letter wave animation for module title (reuses styles in main.css) -->
+  <script>
+    (function () {
+      function wrapTitleIfReady(titleEl, placeholderText) {
+        if (!titleEl) return false;
+        if (titleEl.querySelector('.wave-letter')) return true; // already wrapped
+        var text = titleEl.textContent.trim();
+        if (!text || (placeholderText && text === placeholderText)) return false;
+        // build spans
+        var frag = document.createDocumentFragment();
+        Array.from(text).forEach(function (ch, i) {
+          var span = document.createElement('span');
+          var isSpace = ch === ' ';
+          span.className = 'wave-letter' + (isSpace ? ' space' : '');
+          span.textContent = isSpace ? '\u00A0' : ch;
+          span.style.animationDelay = (i * 0.06).toFixed(2) + 's';
+          frag.appendChild(span);
+        });
+        titleEl.innerHTML = '';
+        titleEl.appendChild(frag);
+        titleEl.classList.add('wave-text');
+        return true;
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        try {
+          var title = document.querySelector('#module-title.boosters-title');
+          if (!title) return;
+          var placeholder = 'Cargando...';
+
+          // Try immediate wrap (if module already filled the title)
+          if (wrapTitleIfReady(title, placeholder)) return;
+
+          // Otherwise observe changes to the title and wrap when it updates
+          var mo = new MutationObserver(function () {
+            if (wrapTitleIfReady(title, placeholder)) {
+              try { mo.disconnect(); } catch (e) {}
+            }
+          });
+          mo.observe(title, { childList: true, characterData: true, subtree: true });
+
+          // Fallback polling in case the mutation doesn't fire (short-lived)
+          var tries = 0;
+          var iv = setInterval(function () {
+            if (wrapTitleIfReady(title, placeholder) || ++tries > 30) {
+              clearInterval(iv);
+              try { mo.disconnect(); } catch (e) {}
+            }
+          }, 150);
+        } catch (err) {
+          console.warn('module title wave init failed', err);
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
